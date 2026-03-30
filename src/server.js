@@ -14,6 +14,10 @@ const startServer = async () => {
     startCaptureJob();
     startPublishJob();
 
+    // Disparar uma captura inicial IMEDIATA para o bot não começar vazio
+    const { captureTask } = require('./jobs/capture.job');
+    captureTask();
+
     // Iniciar servidor web
     app.listen(env.port, () => {
       logger.info(`Servidor rodando na porta ${env.port}`);

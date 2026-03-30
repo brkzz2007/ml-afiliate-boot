@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const env = require('../config/env');
 const logger = require('../config/logger');
 const repository = require('../database/repository');
-const publisher = require('../publishers/console.publisher');
+const publisher = require('../publishers/whatsapp.publisher');
 
 const publishTask = async () => {
   logger.info('Verificando fila de publicação...');

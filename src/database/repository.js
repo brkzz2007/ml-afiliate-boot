@@ -27,7 +27,7 @@ const enqueueProduct = (queueItem) => {
   return new Promise((resolve, reject) => {
     const query = `
       INSERT INTO queue (product_id, raw_message, formatted_message, status)
-      VALUES (?, ?, ?, 'pending')
+      VALUES (?, ?, ?, 'approved')
       ON CONFLICT(product_id) DO NOTHING
     `;
     db.run(query, [queueItem.productId, queueItem.rawMessage, queueItem.formattedMessage], function(err) {

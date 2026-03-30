@@ -8,4 +8,7 @@ module.exports = {
   mlCategory: process.env.ML_CATEGORY || '',
   cronCaptureSchedule: process.env.CRON_CAPTURE_SCHEDULE || '0 * * * *',
   cronPublishSchedule: process.env.CRON_PUBLISH_SCHEDULE || '*/10 * * * *',
+  whatsappTargetNumber: process.env.WHATSAPP_TARGET_NUMBER || '',
+  whatsappTargetGroup: process.env.WHATSAPP_TARGET_GROUP || '',
+  mlAffiliateTag: process.env.ML_AFFILIATE_TAG || '',
 };
