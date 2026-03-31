@@ -10,7 +10,8 @@ class WhatsappPublisher extends BasePublisher {
     this.client = new Client({
       authStrategy: new LocalAuth(),
       webVersionCache: {
-        type: 'none'
+        type: 'remote',
+        remotePath: 'https://cdn.jsdelivr.net/gh/wppconnect-team/wa-version@main/html/2.2412.54.html'
       },
       puppeteer: {
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
