@@ -1,27 +1,18 @@
-# Usar imagem oficial com Node e Chromium/Puppeteer
-FROM ghcr.io/puppeteer/puppeteer:latest
+FROM ghcr.io/puppeteer/puppeteer:21.9.0
 
-# Definir como root para instalar dependências
-USER root
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable \
+    NODE_ENV=production
 
-WORKDIR /app
+WORKDIR /usr/src/app
 
-# Copiar arquivos de dependências
 COPY package*.json ./
-
-# Instalar dependências (limpa o cache e instala de forma silenciosa)
-RUN npm install --omit=dev
-
-# Copiar o restante do código
+# Run npm install with root user so we can install packages
+USER root
+RUN npm install
 COPY . .
+RUN chown -R pptruser:pptruser /usr/src/app
 
-# Dar permissão para a pasta do Puppeteer e DB
-RUN mkdir -p .wwebjs_auth .wwebjs_cache logs && \
-    chown -R pptruser:pptruser /app
-
-# Voltar para o usuário do Puppeteer para segurança
 USER pptruser
 
-EXPOSE 3005
-
-CMD ["node", "src/server.js"]
+CMD [ "npm", "start" ]

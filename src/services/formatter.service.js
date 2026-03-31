@@ -14,7 +14,7 @@ class FormatterService {
 
   generateFormattedMessage(product) {
     const link = this.formatLink(product.link);
-    return `🖼 ${product.imageUrl}\n📦 *${product.title}*\n📝 ${product.description}\n💰 R$ ${product.price.toFixed(2)}\n🔗 ${link}`;
+    return `📦 *${product.title}*\n\n💰 R$ ${product.price.toFixed(2)}\n\n🔗 ${link}`;
   }
 }
 

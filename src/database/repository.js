@@ -65,7 +65,7 @@ const updateQueueStatus = (id, status) => {
 
 const getNextApprovedItem = () => {
     return new Promise((resolve, reject) => {
-        const query = "SELECT * FROM queue WHERE status = 'approved' ORDER BY updated_at ASC LIMIT 1";
+        const query = "SELECT q.*, p.image_url FROM queue q JOIN products p ON q.product_id = p.id WHERE q.status = 'approved' ORDER BY q.updated_at ASC LIMIT 1";
         db.get(query, [], (err, row) => {
             if (err) reject(err);
             else resolve(row);

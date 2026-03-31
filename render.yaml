@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: ml-afiliados-bot
+    env: docker
+    plan: free
+    healthCheckPath: /api/products
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: NODE_ENV
+        value: production
+      - key: WHATSAPP_TARGET_NUMBER
+        sync: false
+      - key: WHATSAPP_TARGET_GROUP
+        sync: false
+      - key: ML_AFFILIATE_TAG
+        sync: false
+      - key: ML_SEARCH_KEYWORD
+        value: ofertas
+      - key: CRON_CAPTURE_SCHEDULE
+        value: "0 * * * *"
+      - key: CRON_PUBLISH_SCHEDULE
+        value: "*/30 * * * *"

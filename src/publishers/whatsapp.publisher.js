@@ -1,5 +1,5 @@
 const qrcode = require('qrcode-terminal');
-const { Client, LocalAuth } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const BasePublisher = require('./base.publisher');
 const logger = require('../config/logger');
 
@@ -10,7 +10,8 @@ class WhatsappPublisher extends BasePublisher {
     this.client = new Client({
       authStrategy: new LocalAuth(),
       puppeteer: {
-          args: ['--no-sandbox', '--disable-setuid-sandbox']
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null,
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--no-first-run', '--no-zygote', '--single-process', '--disable-gpu']
       }
     });
 
@@ -72,8 +73,21 @@ class WhatsappPublisher extends BasePublisher {
       }
 
       logger.info(`Enviando mensagem sobre ${item.product_id} para o destino -> ${chatId}`);
-      await this.client.sendMessage(chatId, item.formatted_message);
-      return true;
+      
+      if (item.image_url) {
+         try {
+             const media = await MessageMedia.fromUrl(item.image_url);
+             await this.client.sendMessage(chatId, media, { caption: item.formatted_message });
+             return true;
+         } catch(e) {
+             logger.error('Erro ao baixar foto. Enviando como texto apenas.', e);
+             await this.client.sendMessage(chatId, item.formatted_message);
+             return true;
+         }
+      } else {
+         await this.client.sendMessage(chatId, item.formatted_message);
+         return true;
+      }
     } catch (error) {
       logger.error('Erro crítico ao publicar no WhatsApp:', error);
       return false; // Retorna false para que o banco saiba que não foi publicado
