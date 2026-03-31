@@ -95,11 +95,15 @@ class WhatsappPublisher extends BasePublisher {
       
       if (item.image_url) {
          try {
-             const media = await MessageMedia.fromUrl(item.image_url);
+             logger.info(`Tentando baixar imagem: ${item.image_url}`);
+             // Limpa query params que podem quebrar o download em alguns casos
+             const cleanImageUrl = item.image_url.split('?')[0];
+             const media = await MessageMedia.fromUrl(cleanImageUrl, { unsafeMime: true });
              await this.client.sendMessage(chatId, media, { caption: item.formatted_message });
+             logger.info('Mensagem com imagem enviada com sucesso!');
              return true;
          } catch(e) {
-             logger.error('Erro ao baixar foto. Enviando como texto apenas.', e);
+             logger.error(`Erro ao baixar foto (${item.image_url}). Enviando como texto apenas.`, e.message);
              await this.client.sendMessage(chatId, item.formatted_message);
              return true;
          }

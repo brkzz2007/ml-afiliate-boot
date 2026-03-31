@@ -14,20 +14,20 @@ class MercadoLivreService {
 
     const fn = async () => {
       try {
-        // Busca na API pública focando em ofertas e descontos do dia
-        const searchUrl = `${BASE_URL}/sites/MLB/search?q=promoção&sort=relevance&condition=new&limit=15`;
-        logger.info('Buscando promoções diárias...');
+        // Busca na API pública focando em ofertas e descontos do dia reais
+        const searchUrl = `${BASE_URL}/sites/MLB/search?q=oferta+do+dia&sort=relevance&condition=new&limit=20`;
+        logger.info('Buscando ofertas reais agora...');
         const response = await axios.get(searchUrl, { headers });
         
         if (response.data && response.data.results) {
-            return response.data.results;
+            // Filtrar apenas o que realmente tem preço e title
+            return response.data.results.filter(r => r.price && r.title);
         }
         return response.data;
       } catch (err) {
             logger.warn('API de Busca falhou. Usando produtos de fallback...');
             return [
-                { id: 'MLB3521401254', title: 'Smartphone Samsung Galaxy S23 5G 256GB - OFERTA', price: 3499, thumbnail: 'https://http2.mlstatic.com/D_NQ_NP_918514-MLU74378939281_022024-O.webp' },
-                { id: 'MLB3321401255', title: 'Xiaomi Redmi Note 13 4G 128GB - OFERTA', price: 1099, thumbnail: 'https://http2.mlstatic.com/D_NQ_NP_994640-MLA74003362148_012024-O.webp' }
+                { id: 'MLB3521401254', title: 'Smartphone Samsung Galaxy S23 5G 256GB - OFERTA DE TESTE', price: 3499, thumbnail: 'https://http2.mlstatic.com/D_NQ_NP_918514-MLU74378939281_022024-O.webp' }
             ];
       }
     };
