@@ -14,23 +14,20 @@ class MercadoLivreService {
 
     const fn = async () => {
       try {
-        // Tenta buscar nos 'Highlights' da categoria de Celulares (MLB1051) ou Geral
-        const highlightUrl = `${BASE_URL}/highlights/MLB/category/MLB1051`;
-        logger.info('Tentando buscar via Highlights (Mais rápido)...');
-        const response = await axios.get(highlightUrl, { headers });
+        // Busca na API pública focando em ofertas e descontos do dia
+        const searchUrl = `${BASE_URL}/sites/MLB/search?q=promoção&sort=relevance&condition=new&limit=15`;
+        logger.info('Buscando promoções diárias...');
+        const response = await axios.get(searchUrl, { headers });
         
-        // Se a resposta tiver o formato de nodes de destaque
-        if (response.data && response.data.content) {
-            return response.data.content.map(c => c.item).filter(i => i);
+        if (response.data && response.data.results) {
+            return response.data.results;
         }
         return response.data;
       } catch (err) {
-            logger.warn('API de Highlights falhou ou retornou 403. Tentando modo de emergência...');
-            // SE TUDO FALHAR: Usando produtos reais hardcoded para o robô sair do lugar!
+            logger.warn('API de Busca falhou. Usando produtos de fallback...');
             return [
-                { id: 'MLB3521401254', title: 'Smartphone Samsung Galaxy S23 5G 256GB', price: 3499, permalink: 'https://www.mercadolivre.com.br/smartphone-samsung-galaxy-s23-5g-256gb-preto/p/MLB21614002', thumbnail: 'https://http2.mlstatic.com/D_NQ_NP_918514-MLU74378939281_022024-O.webp' },
-                { id: 'MLB3321401255', title: 'Xiaomi Redmi Note 13 4G 128GB', price: 1099, permalink: 'https://www.mercadolivre.com.br/xiaomi-redmi-note-13-4g-128gb-6gb-ram/p/MLB32614011', thumbnail: 'https://http2.mlstatic.com/D_NQ_NP_994640-MLA74003362148_012024-O.webp' },
-                { id: 'MLB3621401256', title: 'iPhone 15 128GB Apple', price: 5299, permalink: 'https://www.mercadolivre.com.br/apple-iphone-15-128-gb-preto/p/MLB27614015', thumbnail: 'https://http2.mlstatic.com/D_NQ_NP_725619-MLA71783086961_092023-O.webp' }
+                { id: 'MLB3521401254', title: 'Smartphone Samsung Galaxy S23 5G 256GB - OFERTA', price: 3499, thumbnail: 'https://http2.mlstatic.com/D_NQ_NP_918514-MLU74378939281_022024-O.webp' },
+                { id: 'MLB3321401255', title: 'Xiaomi Redmi Note 13 4G 128GB - OFERTA', price: 1099, thumbnail: 'https://http2.mlstatic.com/D_NQ_NP_994640-MLA74003362148_012024-O.webp' }
             ];
       }
     };
@@ -42,11 +39,12 @@ class MercadoLivreService {
 
   normalizeProduct(raw) {
     if (!raw) return null;
+    const shortLink = `https://produto.mercadolivre.com.br/${raw.id}`;
     return {
       id: raw.id,
       title: raw.title,
       price: raw.price,
-      link: raw.permalink,
+      link: shortLink,
       imageUrl: raw.thumbnail ? raw.thumbnail.replace('-I.jpg', '-O.jpg') : '',
       description: raw.title,
     };

@@ -18,8 +18,8 @@ const captureTask = async () => {
         continue;
       }
 
-      const rawMessage = formatterService.generateRawMessage(product);
-      const formattedMessage = formatterService.generateFormattedMessage(product);
+      const rawMessage = await formatterService.generateRawMessage(product);
+      const formattedMessage = await formatterService.generateFormattedMessage(product);
 
       const added = await queueService.addToQueue(product, rawMessage, formattedMessage);
       if (added) addedCount++;
