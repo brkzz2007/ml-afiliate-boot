@@ -12,14 +12,15 @@ class WhatsappPublisher extends BasePublisher {
       puppeteer: {
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
           headless: true,
+          // Simular um navegador real para evitar bloqueios do WhatsApp Web
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
           args: [
               '--no-sandbox', 
               '--disable-setuid-sandbox',
-              '--disable-dev-shm-usage', // Crítico para evitar erro de memória no Docker
+              '--disable-dev-shm-usage',
               '--disable-accelerated-2d-canvas',
               '--no-first-run',
               '--no-zygote',
-              '--single-process',
               '--disable-gpu'
           ]
       }
