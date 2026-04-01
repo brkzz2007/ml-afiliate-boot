@@ -25,13 +25,13 @@ const startServer = async () => {
     // Executar limpeza inicial como precaução
     await cleanupTask();
 
-    // Disparar uma captura inicial daqui a 15 segundos para o bot não começar vazio
-    // e dar tempo dele carregar o QR/Sessão e estar Ready.
+    // Disparar uma captura inicial daqui a 120 segundos (2 minutos)
+    // Isso dá tempo do WhatsApp conectar/gerar QR sem competir por RAM com o Scraper.
     setTimeout(() => {
-        logger.info('Disparando captura inicial após delay de 15s...');
+        logger.info('🚀 Disparando captura inicial segura (após delay de 120s para equilibrar RAM)...');
         const { captureTask } = require('./jobs/capture.job');
         captureTask();
-    }, 15000);
+    }, 120000);
 
     // Iniciar servidor web
     app.listen(env.port, () => {

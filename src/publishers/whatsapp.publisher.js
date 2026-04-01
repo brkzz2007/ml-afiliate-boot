@@ -16,6 +16,7 @@ class WhatsappPublisher extends BasePublisher {
           headless: true,
           // Simular um navegador real para evitar bloqueios do WhatsApp Web
           userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          // Configurações agressivas para sobreviver em 512MB de RAM
           args: [
               '--no-sandbox', 
               '--disable-setuid-sandbox',
@@ -23,7 +24,9 @@ class WhatsappPublisher extends BasePublisher {
               '--disable-accelerated-2d-canvas',
               '--no-first-run',
               '--no-zygote',
-              '--disable-gpu'
+              '--single-process', // Crucial para economizar RAM no Render
+              '--disable-gpu',
+              '--disable-features=site-per-process,IsolateOrigins' // Mais economia de memória
           ]
       }
     });
