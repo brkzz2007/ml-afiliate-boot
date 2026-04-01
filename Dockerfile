@@ -1,18 +1,22 @@
-FROM ghcr.io/puppeteer/puppeteer:21.9.0
+FROM node:20-bullseye
 
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable \
-    NODE_ENV=production
+# Instalar dependências para compilar sqlite3 se necessário
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-# Run npm install with root user so we can install packages
-USER root
-RUN npm install
-COPY . .
-RUN chown -R pptruser:pptruser /usr/src/app
+RUN npm install --production
 
-USER pptruser
+COPY . .
+
+# Criar a pasta de autenticação do whatsapp
+RUN mkdir -p .wwebjs_auth
+
+EXPOSE 3000
 
 CMD [ "npm", "start" ]

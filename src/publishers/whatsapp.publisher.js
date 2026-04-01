@@ -1,129 +1,123 @@
-const qrcode = require('qrcode-terminal');
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
-const BasePublisher = require('./base.publisher');
+const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, delay } = require('@whiskeysockets/baileys');
+const { Boom } = require('@hapi/boom');
+const pino = require('pino');
+const env = require('../config/env');
 const logger = require('../config/logger');
+const path = require('path');
+const fs = require('fs');
 
-class WhatsappPublisher extends BasePublisher {
+class WhatsappPublisher {
   constructor() {
-    super();
-    logger.info('Inicializando cliente do WhatsApp Web Automático...');
-    this.client = new Client({
-      authStrategy: new LocalAuth(),
-      authTimeoutMs: 120000, // Aumentado para 120 segundos (Render-friendly)
-      qrMaxRetries: 15,     // Dá bastante chances para carregar
-      puppeteer: {
-          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-          headless: true,
-          // Simular um navegador real para evitar bloqueios do WhatsApp Web
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          // 🚨 CONFIGURAÇÕES EXTREMAS DE MEMÓRIA (Última tentativa para 512MB)
-          args: [
-              '--no-sandbox', 
-              '--disable-setuid-sandbox',
-              '--disable-dev-shm-usage',
-              '--disable-accelerated-2d-canvas',
-              '--no-first-run',
-              '--no-zygote',
-              '--single-process',
-              '--disable-gpu',
-              '--hide-scrollbars',
-              '--mute-audio',
-              '--disable-breakpad',
-              '--disable-canvas-aa',
-              '--disable-2d-canvas-clip-aa',
-              '--js-flags="--max-old-space-size=200"', // Força o Chrome a usar menos JS
-              '--disk-cache-size=1' // Desativa cache de disco
-          ]
-      }
-    });
-
-    this.isReady = false;
+    this.sock = null;
     this.latestQr = null;
+    this.isReady = false;
+    this.authPath = path.resolve(process.cwd(), '.wwebjs_auth'); // Reaproveitando o nome da pasta para não quebrar o gitignore se houver
+    
+    // Garantir que a pasta de auth existe
+    if (!fs.existsSync(this.authPath)) {
+        fs.mkdirSync(this.authPath, { recursive: true });
+    }
 
-    this.client.on('qr', (qr) => {
-        logger.info('🚀 ALERTA: NOVO QR CODE DO WHATSAPP GERADO! Escaneie pelo seu celular:');
-        qrcode.generate(qr, { small: true });
-        this.latestQr = qr;
+    this.initialize();
+  }
+
+  async initialize() {
+    const { state, saveCreds } = await useMultiFileAuthState(this.authPath);
+    const { version } = await fetchLatestBaileysVersion();
+
+    logger.info(`Iniciando Motor Leve (Baileys v${version.join('.')})...`);
+
+    this.sock = makeWASocket({
+      version,
+      auth: state,
+      printQRInTerminal: true,
+      logger: pino({ level: 'silent' }), // Deixa o console limpo, usaremos nosso logger
+      browser: ['Antigravity Bot', 'Chrome', '1.0.0']
     });
 
-    this.client.on('ready', () => {
-        logger.info('✅ WhatsApp conectado com sucesso! Pronto para postar!');
+    this.sock.ev.on('creds.update', saveCreds);
+
+    this.sock.ev.on('connection.update', (update) => {
+      const { connection, lastDisconnect, qr } = update;
+
+      if (qr) {
+        this.latestQr = qr;
+        this.isReady = false;
+        logger.info('📱 Novo QR Code gerado! Escaneie no seu WhatsApp.');
+      }
+
+      if (connection === 'close') {
+        const shouldReconnect = (lastDisconnect.error instanceof Boom) ? 
+            lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
+        
+        this.isReady = false;
+        logger.warn(`Conexão fechada. Motivo: ${lastDisconnect.error?.message}. Reconectando: ${shouldReconnect}`);
+        
+        if (shouldReconnect) {
+          this.initialize();
+        }
+      } else if (connection === 'open') {
+        logger.info('✅ Conexão com WhatsApp estabelecida com sucesso! Motor Leve Ativo.');
         this.isReady = true;
         this.latestQr = null;
-    });
-
-    this.client.on('auth_failure', () => {
-        logger.error('❌ Falha na autenticação do WhatsApp.');
-    });
-
-    // Iniciar o cliente do wpp localmente no momento que este arquivo for chamado
-    this.client.initialize().catch(err => {
-        logger.error(`Falha crítica ao inicializar o WhatsApp Web (Chromium/Puppeteer): ${err.message}`, { stack: err.stack });
+      }
     });
   }
 
   async publish(item) {
-    if (!this.isReady) {
-      logger.warn('WhatsApp ainda não está pronto para enviar, aguardando conexão (Tente escanear o QR Code!). Job tentará depois.');
-      return false; 
+    if (!this.isReady || !this.sock) {
+      logger.error('Impossível publicar: Bot não está conectado.');
+      return false;
     }
 
     try {
-      const targetNumber = process.env.WHATSAPP_TARGET_NUMBER;
-      const targetGroup = process.env.WHATSAPP_TARGET_GROUP;
-      
+      const targetNumber = env.whatsappTargetNumber;
+      const targetGroup = env.whatsappTargetGroup;
       let chatId = null;
 
+      // 1. Tenta achar pelo grupo se configurado
       if (targetGroup) {
-         try {
-             logger.info(`Buscando grupo: ${targetGroup}`);
-             const chats = await this.client.getChats();
-             const group = chats.find(c => c.isGroup && c.name.toLowerCase() === targetGroup.toLowerCase());
-             if (group) {
-                 chatId = group.id._serialized;
-                 logger.info(`✅ Grupo encontrado! ID: ${chatId}`);
-             } else {
-                 logger.warn(`⚠️ Grupo '${targetGroup}' NÃO encontrado na sua lista de chats recentes! Verifique se digitou o nome EXATO.`);
-             }
-         } catch(e) {
-             logger.error("Erro ao tentar ler histórico de grupos: ", e);
-         }
+          try {
+              logger.info(`Buscando grupo: ${targetGroup}`);
+              const groups = await this.sock.groupFetchAllParticipating();
+              const group = Object.values(groups).find(g => g.subject.toLowerCase() === targetGroup.toLowerCase());
+              
+              if (group) {
+                  chatId = group.id;
+                  logger.info(`✅ Grupo encontrado! ID: ${chatId}`);
+              } else {
+                  logger.warn(`⚠️ Grupo '${targetGroup}' não encontrado na lista de participações.`);
+              }
+          } catch (e) {
+              logger.error('Erro ao buscar grupos:', e);
+          }
       }
 
+      // 2. Fallback para número pessoal
       if (!chatId) {
           if (!targetNumber) {
-            logger.error('ATENÇÃO: Você não configurou nem Grupo nem Número de WhatsApp para envio.');
-            return false;
+              logger.error('Erro: Nem grupo nem número configurados.');
+              return false;
           }
-          let formattedNumber = String(targetNumber);
-          if (!formattedNumber.startsWith('55')) formattedNumber = '55' + formattedNumber;
-          chatId = formattedNumber.includes('@c.us') ? formattedNumber : `${formattedNumber}@c.us`; 
+          let num = String(targetNumber).replace(/\D/g, '');
+          chatId = `${num}@s.whatsapp.net`;
           logger.info(`Usando número pessoal como destino: ${chatId}`);
       }
 
-      logger.info(`Enviando mensagem sobre ${item.product_id} para o destino -> ${chatId}`);
-      
-      if (item.image_url) {
-         try {
-             logger.info(`Tentando baixar imagem: ${item.image_url}`);
-             // Limpa query params que podem quebrar o download em alguns casos
-             const cleanImageUrl = item.image_url.split('?')[0];
-             const media = await MessageMedia.fromUrl(cleanImageUrl, { unsafeMime: true });
-             await this.client.sendMessage(chatId, media, { caption: item.formatted_message });
-             logger.info('Mensagem com imagem enviada com sucesso!');
-             return true;
-         } catch(e) {
-             logger.error(`Erro ao baixar foto (${item.image_url}). Enviando como texto apenas.`, e.message);
-             await this.client.sendMessage(chatId, item.formatted_message);
-             return true;
-         }
-      } else {
-         await this.client.sendMessage(chatId, item.formatted_message);
-         return true;
-      }
+      logger.info(`Enviando oferta: ${item.product_id} para ${chatId}`);
+
+      // 3. Enviar mensagem com imagem
+      await this.sock.sendMessage(chatId, {
+          image: { url: item.image_url },
+          caption: item.formatted_message
+      });
+
+      logger.info(`Mensagem enviada com sucesso para ${chatId}`);
+      return true;
+
     } catch (error) {
-      logger.error('Erro crítico ao publicar no WhatsApp:', error);
-      return false; // Retorna false para que o banco saiba que não foi publicado
+      logger.error('Erro ao publicar mensagem no WhatsApp (Motor Leve):', error);
+      return false;
     }
   }
 }
