@@ -17,7 +17,7 @@ const startServer = async () => {
     startPublishJob();
 
     // Executar limpeza inicial como precaução
-    cleanupTask();
+    await cleanupTask();
 
     // Disparar uma captura inicial daqui a 15 segundos para o bot não começar vazio
     // e dar tempo dele carregar o QR/Sessão e estar Ready.
