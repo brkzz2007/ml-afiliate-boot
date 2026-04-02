@@ -8,9 +8,7 @@ const app = express();
 app.set('env', env);
 app.use(cors());
 app.use(express.json());
-
-// Routes
-app.use('/api', routes);
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // Healthcheck (CRITICAL for Render)
 app.get('/health', (req, res) => res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() }));
@@ -18,61 +16,80 @@ app.get('/health', (req, res) => res.status(200).json({ status: 'OK', timestamp:
 // Redireciona a raiz para o qr code
 app.get('/', (req, res) => res.redirect('/qr'));
 
-// QR Code Endpoint
+// Rota de visualização do QR Code / Pairing Code
 app.get('/qr', (req, res) => {
-    // Require LAZY para não travar o boot
     const whatsappPublisher = require('./publishers/whatsapp.publisher');
     
     if (whatsappPublisher.isReady) {
-        return res.send('<h2>O WhatsApp já está conectado!</h2><p>Nenhuma ação necessária.</p>');
-    }
-
-    if (!whatsappPublisher.latestQr) {
         return res.send(`
-            <meta http-equiv="refresh" content="5">
             <style>body { font-family: sans-serif; text-align: center; margin-top: 50px; background: #121212; color: #fff; }</style>
-            <h2>Aguardando geração do QR Code...</h2>
-            <p>Status atual: <strong>${whatsappPublisher.initStatus || 'Iniciando...'}</strong></p>
-            <div style="background: #1e1e1e; padding: 10px; border-radius: 5px; width: 80%; margin: 20px auto; text-align: left; font-size: 14px; color: #999;">
-                <p style="margin: 0; color: #fff; border-bottom: 1px solid #333; padding-bottom: 5px;">Logs do Sistema:</p>
-                ${whatsappPublisher.logs.map(log => `<p style="margin: 5px 0;">${log}</p>`).join('')}
-            </div>
-            <p>A página irá recarregar automaticamente em 5 segundos.</p>
+            <h2 style="color: #4caf50;">✅ WhatsApp Conectado com Sucesso!</h2>
+            <p>O bot do Mercado Livre já está rodando e publicando ofertas.</p>
         `);
     }
 
-    const html = `
-        <!DOCTYPE html>
-        <html lang="pt-br">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>QR Code do WhatsApp Bot</title>
+    // Se tivermos um código de pareamento, mostramos ele em destaque
+    if (whatsappPublisher.latestPairingCode) {
+        return res.send(`
+            <meta http-equiv="refresh" content="10">
+            <style>body { font-family: sans-serif; text-align: center; margin-top: 50px; background: #121212; color: #fff; }</style>
+            <h2>🔑 Seu Código de Pareamento:</h2>
+            <h1 style="color: #4caf50; font-size: 60px; letter-spacing: 5px; background: #333; padding: 20px; display: inline-block; border-radius: 10px;">${whatsappPublisher.latestPairingCode}</h1>
+            <p>1. No celular vá em: Configurações -> Dispositivos Conectados</p>
+            <p>2. Clique em: "Conectar com número de telefone"</p>
+            <p>3. Digite o código acima.</p>
+            <hr style="width: 50%; border-color: #333;">
+            <p>Status: ${whatsappPublisher.initStatus}</p>
+        `);
+    }
+
+    // Se NÃO tivermos nada ainda (ou tiver QR mas quisermos código)
+    return res.send(`
+        <meta http-equiv="refresh" content="10">
+        <style>body { font-family: sans-serif; text-align: center; margin-top: 50px; background: #121212; color: #fff; }</style>
+        
+        <h2>📱 Conector do WhatsApp</h2>
+        <p>Status: <strong>${whatsappPublisher.initStatus}</strong></p>
+
+        <div style="background: #1e1e1e; padding: 20px; border-radius: 10px; width: 400px; margin: 30px auto; border: 1px solid #333;">
+            <p>Se o QR Code abaixo não aparecer em 1 minuto, use o código:</p>
+            <form method="POST" action="/qr">
+                <input type="text" name="phone" placeholder="5511999998888" style="padding: 10px; border-radius: 5px; width: 220px; border: none; font-size: 16px;">
+                <button type="submit" style="padding: 10px 15px; border-radius: 5px; background: #4caf50; border: none; color: white; cursor: pointer; font-weight: bold;">Gerar Código</button>
+            </form>
+            <p style="font-size: 12px; color: #666; margin-top: 10px;">(Coloque código do país + DDD + número. Ex: 5511999998888)</p>
+        </div>
+
+        ${whatsappPublisher.latestQr ? `
+            <div id="qrcode" style="padding: 20px; background: white; width: 256px; margin: 20px auto; border-radius: 10px;"></div>
             <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-            <style>
-                body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #121212; color: #fff; }
-                #qrcode { display: flex; justify-content: center; margin-top: 20px; background: white; padding: 20px; border-radius: 10px; width: fit-content; margin: 20px auto; }
-            </style>
-        </head>
-        <body>
-            <h1>Escaneie o QR Code no seu WhatsApp</h1>
-            <p>Se o QR Code sumir ou o WhatsApp for conectado, a página irá recarregar automaticamente.</p>
-            <div id="qrcode"></div>
-            
             <script>
                 new QRCode(document.getElementById("qrcode"), {
                     text: "${whatsappPublisher.latestQr}",
                     width: 256,
                     height: 256
                 });
-
-                // Dica: Se o QR Code expirar, você pode recarregar a página manualmente no botão do navegador
-                console.log('Esperando o escaneamento na nuvem...');
             </script>
-        </body>
-        </html>
-    `;
-    res.send(html);
+        ` : '<h3>Aguardando QR Code...</h3>'}
+
+        <div style="background: #1e1e1e; padding: 10px; border-radius: 5px; width: 80%; margin: 20px auto; text-align: left; font-size: 14px; color: #999;">
+            <p style="margin: 0; color: #fff; border-bottom: 1px solid #333; padding-bottom: 5px;">Logs do Sistema:</p>
+            ${whatsappPublisher.logs.map(log => `<p style="margin: 5px 0;">${log}</p>`).join('')}
+        </div>
+    `);
 });
+
+// Endpoint POST para processar o pedido do Pairing Code
+app.post('/qr', async (req, res) => {
+    const { phone } = req.body;
+    const whatsappPublisher = require('./publishers/whatsapp.publisher');
+    
+    if (phone) {
+        await whatsappPublisher.triggerPairing(phone);
+    }
+    res.redirect('/qr');
+});
+
+app.use('/api', routes);
 
 module.exports = app;

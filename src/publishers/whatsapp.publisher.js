@@ -10,7 +10,8 @@ class WhatsappPublisher {
     this.latestQr = null;
     this.isReady = false;
     this.initStatus = 'Iniciando...';
-    this.logs = []; // Histórico para debug na web
+    this.logs = []; 
+    this.latestPairingCode = null; // Código de 8 dígitos
     this.authPath = path.resolve('/tmp/.baileys_auth');
     
     // Garantir que a pasta de auth existe no tmp
@@ -98,6 +99,29 @@ class WhatsappPublisher {
         });
     } catch (err) {
         logger.error('❌ Módulo WhatsApp: Erro fatal na inicialização:', err.message);
+    }
+  }
+
+  async triggerPairing(phoneNumber) {
+    if (!this.sock) {
+        this.addLog('❌ Não foi possível gerar código agora. Reiniciando...');
+        await this.initialize();
+        return null;
+    }
+    
+    try {
+        // Formata o número (só números)
+        const num = phoneNumber.replace(/\D/g, '');
+        this.addLog(`🔑 Solicitando código para +${num}...`);
+        
+        const code = await this.sock.requestPairingCode(num);
+        this.latestPairingCode = code;
+        this.initStatus = `Digite este código no seu WhatsApp: ${code}`;
+        this.addLog(`✅ Código recebido: ${code}`);
+        return code;
+    } catch (e) {
+        this.addLog(`❌ Erro ao pedir código: ${e.message}`);
+        return null;
     }
   }
 
