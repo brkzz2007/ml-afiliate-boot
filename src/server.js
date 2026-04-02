@@ -15,10 +15,13 @@ const { startCleanupJob, cleanupTask } = require('./jobs/cleanup.job');
 const startServer = async () => {
     logger.info('Iniciando o processo de boot do servidor...');
     
+    // Injetar status inicial no publisher para o feedback da rota /qr
+    const whatsappPublisher = require('./publishers/whatsapp.publisher');
+    whatsappPublisher.initStatus = 'Iniciando servidor web...';
+
     // 1. Iniciar servidor web IMEDIATAMENTE (Passo crucial para o Render)
-    let serverInstance;
     try {
-        serverInstance = app.listen(env.port, '0.0.0.0', () => {
+        app.listen(env.port, '0.0.0.0', () => {
             logger.info(`🚀 Servidor pronto na porta ${env.port}. Motor: ${env.nodeEnv}`);
         });
     } catch (e) {
@@ -27,32 +30,36 @@ const startServer = async () => {
     }
 
     try {
-        // 2. Inicializar o banco de dados (Assíncrono)
-        logger.info('Tentando inicializar banco de dados...');
-        await initializeDB();
-        logger.info('✅ Banco de Dados Pronto.');
-
-        // 3. Iniciar o Motor do WhatsApp (Baileys)
-        logger.info('Carregando Motor do WhatsApp...');
-        const whatsappPublisher = require('./publishers/whatsapp.publisher');
+        // 2. Iniciar o Motor do WhatsApp (BAILEYS PRIMEIRO)
+        whatsappPublisher.initStatus = 'Carregando Motor do WhatsApp...';
         whatsappPublisher.initialize().catch(err => {
-            logger.error('⚠️ Falha parcial na inicialização do Baileys:', err.message);
+            whatsappPublisher.initStatus = `Erro no WhatsApp: ${err.message}`;
+            logger.error('⚠️ Falha na inicialização do Baileys:', err.message);
         });
+
+        // 3. Inicializar o banco de dados (EM SEGUNDO PLANO)
+        setTimeout(async () => {
+            try {
+                whatsappPublisher.initStatus = 'Configurando Banco de Dados...';
+                await initializeDB();
+                logger.info('✅ Banco de Dados Pronto.');
+                whatsappPublisher.initStatus = 'Pronto para Conectar';
+            } catch (dbErr) {
+                logger.error('Erro no DB:', dbErr.message);
+            }
+        }, 5000); // 5 segundos de folga para o WhatsApp respirar
         
         // 4. Iniciar Cron Jobs
         const { startCaptureJob } = require('./jobs/capture.job');
         const { startPublishJob } = require('./jobs/publisher.job');
-        const { startCleanupJob, cleanupTask } = require('./jobs/cleanup.job');
+        const { startCleanupJob } = require('./jobs/cleanup.job');
 
         startCleanupJob();
         startCaptureJob();
         startPublishJob();
 
-        // Limpeza inicial assíncrona
-        cleanupTask().catch(e => logger.error('Erro na limpeza inicial:', e));
-
     } catch (error) {
-        logger.error('⚠️ Falha durante o boot, mas o servidor segue vivo:', error.message);
+        logger.error('⚠️ Falha durante o boot:', error.message);
     }
 };
 

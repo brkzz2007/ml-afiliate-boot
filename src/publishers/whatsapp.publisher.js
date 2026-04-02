@@ -9,6 +9,7 @@ class WhatsappPublisher {
     this.sock = null;
     this.latestQr = null;
     this.isReady = false;
+    this.initStatus = 'Aguardando inicialização...';
     this.authPath = path.resolve(process.cwd(), '.baileys_auth');
     
     // Garantir que a pasta de auth existe

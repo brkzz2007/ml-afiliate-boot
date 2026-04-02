@@ -30,7 +30,9 @@ app.get('/qr', (req, res) => {
     if (!whatsappPublisher.latestQr) {
         return res.send(`
             <meta http-equiv="refresh" content="5">
+            <style>body { font-family: sans-serif; text-align: center; margin-top: 50px; background: #121212; color: #fff; }</style>
             <h2>Aguardando geração do QR Code...</h2>
+            <p>Status atual: <strong>${whatsappPublisher.initStatus || 'Iniciando...'}</strong></p>
             <p>A página irá recarregar automaticamente em 5 segundos.</p>
         `);
     }
