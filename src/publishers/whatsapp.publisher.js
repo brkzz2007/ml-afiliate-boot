@@ -11,14 +11,14 @@ class WhatsappPublisher {
     this.isReady = false;
     this.initStatus = 'Iniciando...';
     this.logs = []; // Histórico para debug na web
-    this.authPath = path.resolve(process.cwd(), '.baileys_auth');
+    this.authPath = path.resolve('/tmp/.baileys_auth');
     
-    // Garantir que a pasta de auth existe
+    // Garantir que a pasta de auth existe no tmp
     if (!fs.existsSync(this.authPath)) {
         try {
             fs.mkdirSync(this.authPath, { recursive: true });
         } catch (e) {
-            logger.error('Erro ao criar pasta de auth:', e);
+            logger.error('Erro ao criar pasta no /tmp:', e);
         }
     }
   }
@@ -40,13 +40,12 @@ class WhatsappPublisher {
         this.addLog('📂 Motor: Configurando autenticação...');
         const { state, saveCreds } = await useMultiFileAuthState(this.authPath);
 
-        this.addLog('🚀 Motor: Conectando (Padrão Linux)...');
+        this.addLog('🚀 Motor: Conectando (Modo macOS)...');
         this.sock = makeWASocket({
           auth: state,
-          version: [2, 3000, 1015901307],
           printQRInTerminal: false,
           logger: pino({ level: 'silent' }),
-          browser: ['macOS', 'Chrome', '1.0.0'], // Identidade macOS (mais estável)
+          browser: ['macOS', 'Chrome', '1.0.0'], // Identidade MacBook
           connectTimeoutMs: 60000,
           defaultQueryTimeoutMs: 60000,
           authTimeoutMs: 60000,

@@ -1,6 +1,6 @@
-FROM node:20-slim
+FROM node:20
 
-# Dependências mínimas para compilar o SQLite no Linux
+# Instalando ferramentas de compilação essenciais
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
@@ -11,16 +11,13 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-
-# Instala apenas o necessário, economizando RAM
 RUN npm install --omit=dev
 
 COPY . .
 
-# Permissões para o banco e WhatsApp
-RUN mkdir -p .baileys_auth && chmod 777 .baileys_auth
+# Usaremos o /tmp para a sessão por ser mais rápido no Render Free
+RUN mkdir -p /tmp/.baileys_auth && chmod 777 /tmp/.baileys_auth
 
 EXPOSE 3000
 
-# Execução direta para o Render monitorar melhor
 CMD [ "node", "src/server.js" ]
