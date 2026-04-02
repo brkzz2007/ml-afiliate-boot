@@ -1,13 +1,11 @@
-FROM node:20
+FROM node:20-slim
 
-# Instalando ferramentas essenciais de rede e criptografia
+# Dependências para o SQLite
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
     build-essential \
-    openssl \
-    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
@@ -17,8 +15,8 @@ RUN npm install --omit=dev
 
 COPY . .
 
-# Permissões totais para o armazenamento temporário
-RUN mkdir -p /tmp/.baileys_auth && chmod 777 /tmp/.baileys_auth
+# Permissões na pasta local
+RUN mkdir -p .baileys_auth && chmod 777 .baileys_auth
 
 EXPOSE 3000
 
