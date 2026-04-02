@@ -19,6 +19,43 @@ class WhatsappPublisher {
     }
   }
 
+  // 🔄 CARREGAR SESSÃO DO NEON PARA O DISCO
+  async restoreSessionFromNeon() {
+      const { getAllSessionFiles } = require('../database/init');
+      this.addLog('📥 Recuperando login salvo no Neon.tech...');
+      try {
+          const files = await getAllSessionFiles();
+          if (files.length === 0) {
+              this.addLog('⚠️ Nenhuma sessão anterior encontrada no Neon.');
+              return false;
+          }
+          
+          for (const file of files) {
+              const filePath = path.join(this.authPath, file.id);
+              fs.writeFileSync(filePath, file.data);
+          }
+          this.addLog('✅ Login recuperado com sucesso do banco externo!');
+          return true;
+      } catch (e) {
+          this.addLog('❌ Falha ao carregar sessão do banco.');
+          return false;
+      }
+  }
+
+  // 📤 SALVAR SESSÃO DO DISCO PARA O NEON
+  async syncFileToNeon(fileName) {
+      const { saveSessionFile } = require('../database/init');
+      try {
+          const filePath = path.join(this.authPath, fileName);
+          if (fs.existsSync(filePath)) {
+              const data = fs.readFileSync(filePath, 'utf-8');
+              await saveSessionFile(fileName, data);
+          }
+      } catch (e) {
+          logger.warn(`Erro ao sincronizar ${fileName} para o Neon:`, e.message);
+      }
+  }
+
   addLog(msg) {
     const time = new Date().toLocaleTimeString();
     this.logs.unshift(`[${time}] ${msg}`);
@@ -33,24 +70,31 @@ class WhatsappPublisher {
         this.sock = null;
     }
 
-    this.addLog('⚙️ Iniciando motor...');
+    // TENTA RESTAURAR ANTES DE LIGAR O MOTOR
+    await this.restoreSessionFromNeon();
+
+    this.addLog('⚙️ Iniciando motor (Conexão Persistente)...');
     try {
         const baileys = await import('@whiskeysockets/baileys');
-        const { default: makeWASocket, useMultiFileAuthState } = baileys;
+        const { default: makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion } = baileys;
         const { Boom } = await import('@hapi/boom');
 
         const { state, saveCreds } = await useMultiFileAuthState(this.authPath);
+        const { version } = await fetchLatestBaileysVersion();
 
         this.sock = makeWASocket({
+          version,
           auth: state,
-          printQRInTerminal: true, // Volta a mostrar no terminal para conferência
+          printQRInTerminal: true,
           logger: pino({ level: 'silent' }),
-          browser: ['Chrome', 'macOS', '1.0.0'],
-          connectTimeoutMs: 60000,
-          generateHighQualityQR: true
+          browser: ['Antigravity Bot', 'Chrome', '1.0.0']
         });
 
-        this.sock.ev.on('creds.update', saveCreds);
+        // SALVA NO BANCO SEMPRE QUE O LOGIN MUDA
+        this.sock.ev.on('creds.update', async () => {
+            await saveCreds();
+            await this.syncFileToNeon('creds.json'); // Arquivo mais crítico!
+        });
 
         this.sock.ev.on('connection.update', (update) => {
           const { connection, lastDisconnect, qr } = update;
@@ -73,7 +117,6 @@ class WhatsappPublisher {
             this.initStatus = '✅ Conectado!';
             this.isReady = true;
             this.latestQr = null;
-            this.latestPairingCode = null;
             this.addLog('✅ Conexo realizada!');
           }
         });

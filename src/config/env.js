@@ -3,6 +3,7 @@ require('dotenv').config();
 module.exports = {
   port: process.env.PORT || 3000,
   nodeEnv: process.env.NODE_ENV || 'production',
+  databaseUrl: process.env.DATABASE_URL,
   dbPath: process.env.DB_PATH || './database.sqlite',
   mlSearchKeyword: process.env.ML_SEARCH_KEYWORD || 'cadeira gamer',
   mlCategory: process.env.ML_CATEGORY || '',
