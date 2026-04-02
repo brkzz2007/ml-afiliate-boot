@@ -46,7 +46,7 @@ class WhatsappPublisher {
           version: [2, 3000, 1015901307],
           printQRInTerminal: false,
           logger: pino({ level: 'silent' }),
-          browser: ['Ubuntu', 'Chrome', '1.0.0'], // Identidade padrão
+          browser: ['macOS', 'Chrome', '1.0.0'], // Identidade macOS (mais estável)
           connectTimeoutMs: 60000,
           defaultQueryTimeoutMs: 60000,
           authTimeoutMs: 60000,
@@ -68,13 +68,25 @@ class WhatsappPublisher {
           if (connection === 'close') {
             const code = (lastDisconnect.error instanceof Boom) ? 
                 lastDisconnect.error.output?.statusCode : 0;
+            const errorMsg = lastDisconnect.error?.message || 'Erro desconhecido';
             
             this.isReady = false;
-            this.initStatus = `Desistência na Rede ou Desconectado (${code})`;
-            this.addLog(`❌ Conexão fechada: ${code}`);
+            this.initStatus = `Conexão fechada (${code}). Resetando...`;
+            this.addLog(`❌ Erro ${code}: ${errorMsg}`);
             
+            // Se for erro de autenticação ou conflito (405/401), limpamos a pasta para forçar novo QR
+            if (code === 405 || code === 401 || code === 403) {
+                this.addLog('🧹 Limpando arquivos de sessão corrompidos...');
+                try {
+                    fs.rmSync(this.authPath, { recursive: true, force: true });
+                    fs.mkdirSync(this.authPath, { recursive: true });
+                } catch (e) {
+                    this.addLog('⚠️ Erro ao limpar pasta.');
+                }
+            }
+
             // Tentativa de reconexão inteligente
-            setTimeout(() => this.initialize(), 5000);
+            setTimeout(() => this.initialize(), 10000); // 10s para o Render respirar
           } else if (connection === 'open') {
             this.initStatus = '✅ Conectado!';
             this.addLog('✅ Sucesso! Bot pronto e ativo.');
