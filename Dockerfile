@@ -1,22 +1,26 @@
-FROM ghcr.io/puppeteer/puppeteer:21.9.0
+FROM node:20-slim
 
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable \
-    NODE_ENV=production
+# Dependências mínimas para compilar o SQLite no Linux
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-USER root
-RUN npm install
+
+# Instala apenas o necessário, economizando RAM
+RUN npm install --omit=dev
 
 COPY . .
 
-RUN mkdir -p .baileys_auth
-RUN chown -R pptruser:pptruser /usr/src/app
-
-USER pptruser
+# Permissões para o banco e WhatsApp
+RUN mkdir -p .baileys_auth && chmod 777 .baileys_auth
 
 EXPOSE 3000
 
-CMD [ "npm", "start" ]
+# Execução direta para o Render monitorar melhor
+CMD [ "node", "src/server.js" ]

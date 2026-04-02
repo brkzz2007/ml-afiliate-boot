@@ -11,20 +11,17 @@ class MercadoLivreService {
     
     const searchTerm = keyword || 'oferta';
     
-    // 🎯 FOCO NA API PARA ECONOMIA DE RAM (Evita estourar o limite de 512MB do Render)
+    // 🎯 FOCO TOTAL NA API (ECONOMIA DE RAM)
     try {
-        const searchUrl = `${BASE_URL}/sites/MLB/search?q=${encodeURIComponent(searchTerm)}&sort=relevance&condition=new&limit=25`;
+        const searchUrl = `https://api.mercadolibre.com/sites/MLB/search?q=${encodeURIComponent(searchTerm)}&sort=relevance&condition=new&limit=25`;
         logger.info(`Buscando via API para: ${searchTerm}...`);
         
         const response = await axios.get(searchUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
                 'Accept': 'application/json',
-                'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-                'Origin': 'https://www.mercadolivre.com.br',
-                'Referer': 'https://www.mercadolivre.com.br/'
             },
-            timeout: 15000 // Tenta por 15s antes de desistir
+            timeout: 10000 
         });
 
         if (response.data && response.data.results && response.data.results.length > 0) {
@@ -35,15 +32,7 @@ class MercadoLivreService {
         
         logger.warn(`API retornou zero resultados para '${searchTerm}'.`);
     } catch (e) {
-        logger.warn(`⚠️ API falhou ou deu 403 (${e.message}). Tentando Scraper Robusto...`);
-        try {
-            const scraperProducts = await scraperService.searchWithBrowser(searchTerm);
-            if (scraperProducts && scraperProducts.length > 0) {
-                return scraperProducts.map(p => this.normalizeProduct(p));
-            }
-        } catch (err) {
-            logger.error(`Scraper robusto também falhou: ${err.message}`);
-        }
+        logger.error(`❌ Erro na consulta da API do ML: ${e.message}`);
     }
 
     return [];
