@@ -35,40 +35,42 @@ class WhatsappPublisher {
         logger.info('🚀 Módulo WhatsApp: Conectando ao servidor...');
         this.sock = makeWASocket({
           auth: state,
+          version: [2, 3000, 1015901307], // Versão fixa estável
           printQRInTerminal: false,
           logger: pino({ level: 'silent' }),
           browser: ['Antigravity Bot', 'Chrome', '1.0.0'],
-          connectTimeoutMs: 60000, // Aumentado para lidar com rede lenta do Free Tier
-          defaultQueryTimeoutMs: 60000
+          connectTimeoutMs: 60000,
+          defaultQueryTimeoutMs: 60000,
+          authTimeoutMs: 60000,
+          generateHighQualityQR: true
         });
 
         this.sock.ev.on('creds.update', saveCreds);
 
         this.sock.ev.on('connection.update', (update) => {
           const { connection, lastDisconnect, qr } = update;
+          
+          if (qr) {
+            this.latestQr = qr;
+            this.initStatus = 'Escaneie o QR Code abaixo';
+            logger.info('📱 QR Code recebido e pronto para exibição.');
+          }
 
-      if (qr) {
-        this.latestQr = qr;
-        this.isReady = false;
-        logger.info('📱 Novo QR Code gerado! Escaneie no seu WhatsApp.');
-      }
-
-      if (connection === 'close') {
-        const shouldReconnect = (lastDisconnect.error instanceof Boom) ? 
-            lastDisconnect.error.output.statusCode !== DisconnectReason.loggedOut : true;
-        
-        this.isReady = false;
-        logger.warn(`Conexão fechada. Motivo: ${lastDisconnect.error?.message}. Reconectando: ${shouldReconnect}`);
-        
-        if (shouldReconnect) {
-          this.initialize();
-        }
-      } else if (connection === 'open') {
-        logger.info('✅ Conexão com WhatsApp estabelecida com sucesso! Motor Leve Ativo.');
-        this.isReady = true;
-        this.latestQr = null;
-      }
-    });
+          if (connection === 'close') {
+            const code = (lastDisconnect.error instanceof Boom) ? 
+                lastDisconnect.error.output?.statusCode : 0;
+            
+            this.isReady = false;
+            this.initStatus = `Conexão fechada (${code}). Reconectando...`;
+            logger.warn(`Conexão fechada: ${code}. Reconectando...`);
+            this.initialize();
+          } else if (connection === 'open') {
+            this.initStatus = '✅ Conectado!';
+            logger.info('✅ WhatsApp Conectado!');
+            this.isReady = true;
+            this.latestQr = null;
+          }
+        });
     } catch (err) {
         logger.error('❌ Módulo WhatsApp: Erro fatal na inicialização:', err.message);
     }
