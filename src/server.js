@@ -13,20 +13,30 @@ const { startPublishJob } = require('./jobs/publisher.job');
 const { startCleanupJob, cleanupTask } = require('./jobs/cleanup.job');
 
 const startServer = async () => {
+    logger.info('Iniciando o processo de boot do servidor...');
+    
     // 1. Iniciar servidor web IMEDIATAMENTE (Passo crucial para o Render)
-    const server = app.listen(env.port, () => {
-        logger.info(`🚀 Servidor pronto na porta ${env.port}. Motor: ${env.nodeEnv}`);
-    });
+    let serverInstance;
+    try {
+        serverInstance = app.listen(env.port, '0.0.0.0', () => {
+            logger.info(`🚀 Servidor pronto na porta ${env.port}. Motor: ${env.nodeEnv}`);
+        });
+    } catch (e) {
+        logger.error('❌ Não foi possível iniciar o servidor web:', e.message);
+        process.exit(1);
+    }
 
     try {
         // 2. Inicializar o banco de dados (Assíncrono)
+        logger.info('Tentando inicializar banco de dados...');
         await initializeDB();
-        logger.info('📦 Banco de Dados Pronto.');
+        logger.info('✅ Banco de Dados Pronto.');
 
         // 3. Iniciar o Motor do WhatsApp (Baileys)
+        logger.info('Carregando Motor do WhatsApp...');
         const whatsappPublisher = require('./publishers/whatsapp.publisher');
         whatsappPublisher.initialize().catch(err => {
-            logger.error('Falha na inicialização do Baileys:', err);
+            logger.error('⚠️ Falha parcial na inicialização do Baileys:', err.message);
         });
         
         // 4. Iniciar Cron Jobs
@@ -41,16 +51,16 @@ const startServer = async () => {
         // Limpeza inicial assíncrona
         cleanupTask().catch(e => logger.error('Erro na limpeza inicial:', e));
 
-        // 5. Primeira captura de ofertas agendada para daqui a pouco
-        setTimeout(() => {
-            logger.info('🛰️ Disparando captura inicial de ofertas...');
-            const { captureTask } = require('./jobs/capture.job');
-            captureTask().catch(e => logger.error('Erro na captura inicial:', e));
-        }, 150000); // 2.5 minutos (dando tempo para o Baileys estabilizar na nuvem)
-
     } catch (error) {
-        logger.error('⚠️ Falha parcial na inicialização (Servidor segue vivo):', error);
+        logger.error('⚠️ Falha durante o boot, mas o servidor segue vivo:', error.message);
     }
 };
 
-startServer();
+// Captura qualquer erro não tratado para mostrar no log
+process.on('uncaughtException', (err) => {
+    logger.error('❌ ERRO FATAL (Uncaught Exception):', err.stack);
+});
+
+startServer().catch(err => {
+    logger.error('❌ FALHA TOTAL NO STARTUP:', err.stack);
+});
