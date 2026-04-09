@@ -10,7 +10,7 @@ const searchProducts = async (searchTerm) => {
         
         const { data: html } = await axios.get(url, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.6045.163 Mobile Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
                 'Accept-Language': 'pt-BR,pt;q=0.9',
                 'Referer': 'https://www.google.com/'
@@ -19,44 +19,38 @@ const searchProducts = async (searchTerm) => {
         });
 
         if (html.includes('id="captcha"') || html.includes('g-recaptcha')) {
-            logger.warn(`⚠️  Captcha detectado via Scraper (Mobile).`);
+            logger.warn(`⚠️  Captcha detectado via Scraper (Desktop).`);
             return await fetchFromBackupAPI(searchTerm);
         }
 
         const $ = cheerio.load(html);
         const products = [];
 
-        // Seletores mobile e desktop mistos
-        const itemSelectors = ['.ui-search-result__wrapper', '.ui-search-layout__item', '.ui-search-result', 'li.ui-search-layout__item'];
-        
-        for (const selector of itemSelectors) {
-            $(selector).each((i, element) => {
-                if (products.length >= 10) return false;
+        $('.poly-card__content').each((i, element) => {
+            if (products.length >= 10) return false;
 
-                try {
-                    const title = $(element).find('.ui-search-item__title').text().trim();
-                    let priceText = $(element).find('.andes-money-amount__fraction').first().text().replace(/\./g, '');
-                    const priceCents = $(element).find('.andes-money-amount__cents').first().text() || '00';
-                    const price = parseFloat(`${priceText}.${priceCents}`);
-                    
-                    const link = $(element).find('a').first().attr('href');
-                    const image = $(element).find('img').first().attr('data-src') || 
-                                  $(element).find('img').first().attr('src');
+            try {
+                const title = $(element).find('.poly-component__title').text().trim() || $(element).find('h2').text().trim();
+                let priceText = $(element).find('.andes-money-amount__fraction').first().text().replace(/\./g, '');
+                const priceCents = $(element).find('.andes-money-amount__cents').first().text() || '00';
+                const price = parseFloat(`${priceText}.${priceCents}`);
+                
+                const link = $(element).find('a').first().attr('href');
+                const image = $(element).closest('.poly-card').find('img.poly-component__picture').attr('data-src') || 
+                              $(element).closest('.poly-card').find('img').attr('src');
 
-                    if (title && price && link && link.includes('mercadolivre.com.br')) {
-                        products.push({
-                            id: link.split('/MLB-')[1]?.split('-')[0] || `ML-${Math.random().toString(36).substr(2, 9)}`,
-                            title,
-                            price,
-                            link,
-                            imageUrl: image,
-                            description: `Oferta: ${searchTerm}`
-                        });
-                    }
-                } catch (err) { }
-            });
-            if (products.length > 0) break;
-        }
+                if (title && price && link && link.includes('mercadolivre.com.br')) {
+                    products.push({
+                        id: link.split('MLB-')[1]?.split('-')[0] || `ML-${Math.random().toString(36).substr(2, 9)}`,
+                        title,
+                        price,
+                        link,
+                        imageUrl: image,
+                        description: `Oferta: ${searchTerm}`
+                    });
+                }
+            } catch (err) { }
+        });
 
         if (products.length === 0) {
             return await fetchFromBackupAPI(searchTerm);

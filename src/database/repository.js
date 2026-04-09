@@ -6,7 +6,7 @@ const saveProduct = async (product) => {
     try {
         const query = `
             INSERT INTO products (id, title, price, link, image_url, description)
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT (id) DO NOTHING
         `;
         const res = await db.run(query, [product.id, product.title, product.price, product.link, product.imageUrl, product.description]);
@@ -18,7 +18,7 @@ const saveProduct = async (product) => {
 };
 
 const getProductById = async (id) => {
-    const query = 'SELECT * FROM products WHERE id = $1';
+    const query = 'SELECT * FROM products WHERE id = ?';
     return await db.get(query, [id]);
 };
 
@@ -26,7 +26,7 @@ const enqueueProduct = async (queueItem) => {
     try {
         const query = `
             INSERT INTO queue (product_id, raw_message, formatted_message, status)
-            VALUES ($1, $2, $3, 'approved')
+            VALUES (?, ?, ?, 'approved')
             ON CONFLICT (product_id) DO NOTHING
         `;
         const res = await db.run(query, [queueItem.productId, queueItem.rawMessage, queueItem.formattedMessage]);
@@ -41,7 +41,7 @@ const getQueue = async (status) => {
     let query = 'SELECT q.*, p.title, p.price, p.link FROM queue q JOIN products p ON q.product_id = p.id';
     let params = [];
     if (status) {
-        query += ' WHERE q.status = $1';
+        query += ' WHERE q.status = ?';
         params.push(status);
     }
     query += ' ORDER BY q.created_at ASC';
@@ -49,7 +49,7 @@ const getQueue = async (status) => {
 };
 
 const updateQueueStatus = async (id, status) => {
-    const query = 'UPDATE queue SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2';
+    const query = 'UPDATE queue SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
     const res = await db.run(query, [status, id]);
     return res.rowCount;
 };
