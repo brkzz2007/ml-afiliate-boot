@@ -70,6 +70,9 @@ class WhatsappPublisher {
   }
 
   async initialize() {
+    this.latestQr = null;
+    this.latestPairingCode = null;
+
     // Evita múltiplas instâncias rodando juntas (Causa erro 405)
     if (this.sock) {
         try { this.sock.ev.removeAllListeners(); } catch(e) {}
@@ -119,16 +122,27 @@ class WhatsappPublisher {
             const statusCode = (lastDisconnect.error instanceof Boom) ? 
                 lastDisconnect.error.output?.statusCode : 0;
             
-            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            const isLoggedOut = statusCode === DisconnectReason.loggedOut;
+            const shouldReconnect = !isLoggedOut;
             
             this.isReady = false;
-            this.initStatus = 'Reconectando...';
             this.addLog(`❌ Conexão fechada (Motivo: ${statusCode}). Reconectando: ${shouldReconnect}`);
             
             if (shouldReconnect) {
+                this.initStatus = 'Reconectando...';
                 setTimeout(() => this.initialize(), 15000);
             } else {
-                this.initStatus = 'Desconectado (Scan Necessário)';
+                this.initStatus = 'Sessão Inválida (Limpando...)';
+                // Se foi deslogado, precisamos limpar tudo para gerar novo QR
+                const { db } = require('../database/init');
+                db.run('DELETE FROM sessions', []).catch(() => {});
+                try {
+                    if (fs.existsSync(this.authPath)) {
+                        fs.rmSync(this.authPath, { recursive: true, force: true });
+                    }
+                } catch (e) {}
+                this.addLog('⚠️ Sessão limpa devido a logout. Reiniciando para novo pareamento...');
+                setTimeout(() => this.initialize(), 5000);
             }
           } else if (connection === 'open') {
             this.initStatus = '✅ Conectado!';
