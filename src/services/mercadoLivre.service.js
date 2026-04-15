@@ -44,13 +44,27 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
         $(selector).each((i, element) => {
             if (products.length >= 10) return false;
             try {
+                // 🛑 VERIFICAÇÃO DE DISPONIBILIDADE
+                const isUnavailable = $(element).text().toLowerCase().includes('esgotado') || 
+                                    $(element).text().toLowerCase().includes('indisponível') ||
+                                    $(element).find('.ui-search-item__status-ticket').text().toLowerCase().includes('indisponível');
+                
+                if (isUnavailable) return;
+
                 const titleElement = $(element).find('.poly-component__title, .ui-search-item__title, .ui-search-result__content-title, .ui-search-item__group__element.ui-search-item__title, h2, h3').first();
                 const title = titleElement.text().trim();
                 
-                const priceElement = $(element).find('.andes-money-amount__fraction, .price-tag-fraction').first();
-                const priceFrac = priceElement.text().replace(/\D/g, '');
-                const priceCents = $(element).find('.andes-money-amount__cents, .price-tag-cents').first().text().replace(/\D/g, '') || '00';
+                // 💰 CAPTURA DE PREÇO MELHORADA (Pega o preço atual/final)
+                const priceContainer = $(element).find('.andes-money-amount--current, .ui-search-price__second-line').first();
+                const priceFrac = priceContainer.find('.andes-money-amount__fraction').text().replace(/\D/g, '') || 
+                                 $(element).find('.andes-money-amount__fraction').first().text().replace(/\D/g, '');
+                const priceCents = priceContainer.find('.andes-money-amount__cents').text().replace(/\D/g, '') || '00';
                 
+                // Tenta pegar o preço antigo para calcular desconto real
+                const oldPriceElement = $(element).find('.andes-money-amount--previous, .ui-search-price__part--original').first();
+                const oldPriceFrac = oldPriceElement.find('.andes-money-amount__fraction').text().replace(/\D/g, '');
+                const oldPrice = oldPriceFrac ? parseFloat(oldPriceFrac) : null;
+
                 if (!title || !priceFrac) return;
 
                 const price = parseFloat(`${priceFrac}.${priceCents}`);
@@ -78,6 +92,7 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                             id, 
                             title, 
                             price, 
+                            oldPrice,
                             link, 
                             imageUrl: image, 
                             description: `Oferta imperdível: ${searchTerm}${isProxy ? ' (via Stealth)' : ''}` 
