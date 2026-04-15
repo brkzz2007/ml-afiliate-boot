@@ -7,8 +7,8 @@ module.exports = {
   dbPath: process.env.DB_PATH || './database.sqlite',
   mlSearchKeyword: process.env.ML_SEARCH_KEYWORD || 'geladeira, fogão, máquina de lavar, sofá, guarda-roupa, mesa de jantar, sabão líquido, amaciante, eletrodomésticos, móveis',
   mlCategory: process.env.ML_CATEGORY || '',
-  cronCaptureSchedule: process.env.CRON_CAPTURE_SCHEDULE || '0 */2 * * *', // A cada 2 horas para evitar ban
-  cronPublishSchedule: process.env.CRON_PUBLISH_SCHEDULE || '*/30 * * * *', // A cada 30 min
+  cronCaptureSchedule: process.env.CRON_CAPTURE_SCHEDULE || '0 8-23,0 * * *', // Das 05h às 21h BRT (08h às 00h UTC)
+  cronPublishSchedule: process.env.CRON_PUBLISH_SCHEDULE || '*/30 8-23,0 * * *', // Das 05h às 21h BRT (08h às 00h UTC)
 
   whatsappTargetNumber: process.env.WHATSAPP_TARGET_NUMBER || '5569984520192',
   whatsappTargetGroup: process.env.WHATSAPP_TARGET_GROUP || 'ofertas do dia',

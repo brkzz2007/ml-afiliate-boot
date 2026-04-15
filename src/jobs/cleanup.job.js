@@ -13,10 +13,10 @@ const cleanupTask = async () => {
     }
 };
 
-// Agenda para rodar todo dia à meia-noite (00:00)
+// Agenda para rodar todo dia às 22:00 Horário de Brasília (01:00 UTC no Render)
 const startCleanupJob = () => {
-    cron.schedule('0 0 * * *', cleanupTask);
-    logger.info('Job de limpeza diária agendado (00:00).');
+    cron.schedule('0 1 * * *', cleanupTask);
+    logger.info('Job de limpeza diária agendado para 22:00 BRT (01:00 UTC).');
 };
 
 module.exports = {
