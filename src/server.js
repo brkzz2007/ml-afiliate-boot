@@ -34,6 +34,12 @@ const startServer = async () => {
             await initializeDB();
             dbOk = true;
             logger.info('✅ Banco de dados pronto.');
+            
+            // 🧹 LIMPEZA FORÇADA PARA MUDANÇA DE NICHO
+            const repository = require('./database/repository');
+            await repository.clearQueue();
+            logger.info('🧹 Limpeza forçada de transição de nicho realizada com sucesso!');
+            
             break;
         } catch (err) {
             logger.error(`❌ Tentativa ${tentativa}/3 falhou: ${err.message}`);
