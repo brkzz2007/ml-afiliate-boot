@@ -12,8 +12,9 @@ class FormatterService {
 
       if (!env.mlAffiliateTag) return cleanLink;
 
-      // Adiciona sua Tag de Afiliado e rastreio de campanha
-      return `${cleanLink}?matt_tool=${env.mlAffiliateTag}&utm_source=whatsapp&utm_medium=chatbot&utm_campaign=afiliados_bot`;
+      // Adiciona apenas o essencial: sua Tag de Afiliado (matt_tool)
+      // Removemos os UTMs para o link ficar o mais curto possível como solicitado
+      return `${cleanLink}?matt_tool=${env.mlAffiliateTag}`;
   }
 
   async generateRawMessage(product) {
@@ -22,21 +23,7 @@ class FormatterService {
   }
 
   async generateFormattedMessage(product) {
-    const mlLink = this.formatLink(product.link);
-    let finalLink = mlLink;
-
-    try {
-        // Usando is.gd que gera links bem curtos e limpos (ex: is.gd/abc)
-        const response = await axios.get(`https://is.gd/create.php?format=json&url=${encodeURIComponent(mlLink)}`, {
-            timeout: 5000
-        });
-        if (response.data && response.data.shorturl) {
-            finalLink = response.data.shorturl;
-        }
-    } catch(err) {
-        logger.warn('Falha ao encurtar o link. Mantendo original.', err.message);
-    }
-
+    const finalLink = this.formatLink(product.link);
     const currentPrice = product.price;
     const hasOriginalPrice = product.oldPrice && product.oldPrice > currentPrice;
     const originalPrice = hasOriginalPrice ? product.oldPrice : (currentPrice * 1.15); // Fallback visual apenas se necessário
