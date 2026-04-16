@@ -55,15 +55,19 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 const isUnavailable = $(element).text().toLowerCase().includes('esgotado') || 
                                     $(element).text().toLowerCase().includes('indisponível') ||
                                     $(element).find('.ui-search-item__status-ticket').text().toLowerCase().includes('indisponível');
-                
+                         // 🔗 CAPTURA DE TÍTULO (Necessário para logs iniciais)
+                const titleElement = $(element).find('.poly-component__title, .ui-search-item__title, .ui-search-result__content-title, .ui-search-item__group__element.ui-search-item__title, h2, h3').first();
+                const title = titleElement.text().trim();
+                if (!title) return;
+
                 // 🔗 CAPTURA DE LINK
                 const linkElement = $(element).find('a.poly-component__title, a.ui-search-link, a.poly-card__title').first();
-                let link = linkElement.attr('href');
+                let link = linkElement.attr('href') || $(element).find('a').attr('href') || titleElement.closest('a').attr('href');
                 if (!link) return;
+                link = unwrapLink(link);
+                if (link && link.startsWith('//')) link = 'https:' + link;
 
                 // 🚨 GARANTIA DE AFILIADO: Ignoramos links de anúncios (click1/mclics)
-                // porque eles não aceitam a tag de afiliado '&matt_tool' corretamente
-                // e muitas vezes expiram. Preferimos links diretos da loja.
                 if (link.includes('click1.mercadolivre') || link.includes('mclics')) {
                     logger.debug(`⏩ Ignorando anúncio patrocinado para garantir link de afiliado: ${title}`);
                     return;
@@ -77,9 +81,6 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 }
 
                 // ⭐ VERIFICAÇÃO DE QUALIDADE (Avaliação e Vendas)
-                const titleElement = $(element).find('.poly-component__title, .ui-search-item__title, .ui-search-result__content-title, .ui-search-item__group__element.ui-search-item__title, h2, h3').first();
-                const title = titleElement.text().trim();
-
                 const ratingElement = $(element).find('.poly-reviews__rating, .ui-search-reviews__rating-number, .ui-search-item__group__element--reviews').first();
                 const ratingText = ratingElement.text();
                 const rating = parseFloat(ratingText.replace(',', '.'));
@@ -91,16 +92,10 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 const isOfficialStore = $(element).text().toLowerCase().includes('loja oficial') || $(element).find('.ui-search-official-store-label').length > 0;
                 const hasGoodSales = salesText.includes('vendidos') || salesText.includes('full');
 
-                // Filtro mais relaxado: Apenas ignora se for explicitamente avaliação baixa.
-                // Se não tiver avaliação nem vendas, nós ACEITAMOS se não tivermos alternativas, 
-                // mas para manter a qualidade inicial, vamos apenas logar e permitir se tiver preço coerente.
                 if (rating && rating < 3.5) {
                     logger.debug(`⏩ Ignorando "${title}" por baixa avaliação: ${rating}`);
                     return;
                 }
-                
-                // Se não tem nada de confiança, a gente marca como "unverified" mas NÃO descarta ainda
-                const isUnverified = !rating && !isOfficialStore && !hasGoodSales;
                 
                 // 💰 CAPTURA DE PREÇO MELHORADA
                 const priceContainer = $(element).find('.andes-money-amount--current, .ui-search-price__second-line').first();
@@ -113,15 +108,10 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 const oldPriceFrac = oldPriceElement.find('.andes-money-amount__fraction').text().replace(/\D/g, '');
                 const oldPrice = oldPriceFrac ? parseFloat(oldPriceFrac) : null;
 
-                if (!title || !priceFrac) return;
+                if (!priceFrac) return;
 
                 const price = parseFloat(`${priceFrac}.${priceCents}`);
                 
-                let link = $(element).find('a').attr('href') || titleElement.closest('a').attr('href') || $(element).find('.ui-search-link').attr('href');
-                link = unwrapLink(link);
-                
-                if (link && link.startsWith('//')) link = 'https:' + link;
-
                 // Tentar várias formas de pegar a imagem
                 let image = $(element).find('img').attr('data-src') || 
                             $(element).find('img').attr('src') ||
