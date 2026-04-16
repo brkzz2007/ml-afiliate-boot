@@ -19,7 +19,7 @@ services:
       - key: ML_AFFILIATE_TAG
         sync: false
       - key: ML_SEARCH_KEYWORD
-        value: "Xiaomi, iPhone, Samsung Galaxy, TV AOC, TV LG, TV Philco, fone de ouvido bluetooth, monitor gamer, projetor, drone camera, tablet, acessorios pc gamer, cabo hdmi hub usb, teclado mouse gamer"
+        value: "geladeira, fogão, máquina de lavar, sofá, guarda-roupa, mesa de jantar, eletrodomésticos, móveis, utilidades domésticas, cama box, ar condicionado"
       - key: CRON_CAPTURE_SCHEDULE
         value: "0 * * * *"
       - key: CRON_PUBLISH_SCHEDULE
