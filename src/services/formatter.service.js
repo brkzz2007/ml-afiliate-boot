@@ -6,18 +6,19 @@ class FormatterService {
   formatLink(link) {
       if (!link) return '';
       
-      // Limpa a URL original tirando rastreios de outros usuários/vendedores
+      // Se for um link de rastreio interno do ML (mclics), NÃO podemos limpar os parâmetros
+      // senão o link para de funcionar.
+      if (link.includes('click1.mercadolivre') || link.includes('mclics')) {
+          return link; 
+      }
+
+      // Para links comuns, limpamos apenas o básico para não poluir
       let cleanLink = link.split('?')[0];
       if (cleanLink.includes('#')) cleanLink = cleanLink.split('#')[0];
 
       if (!env.mlAffiliateTag) return cleanLink;
 
-      // Adiciona a tag de forma limpa
-      // Nota: Para links oficiais de afiliado, o ideal seria usar a API do ML ou o portal.
-      // Aqui estamos seguindo o padrão configurado no projeto para "deep linking" simplificado.
       const finalLink = `${cleanLink}?matt_tool=${env.mlAffiliateTag}&utm_source=whatsapp&utm_medium=chatbot&utm_campaign=afiliados_bot`;
-      
-      logger.debug(`🔗 Link gerado: ${finalLink}`);
       return finalLink;
   }
 
@@ -31,12 +32,15 @@ class FormatterService {
     let finalLink = mlLink;
 
     try {
-        const response = await axios.get(`https://is.gd/create.php?format=json&url=${encodeURIComponent(mlLink)}`);
-        if (response.data && response.data.shorturl) {
-            finalLink = response.data.shorturl;
+        // Mudando para o TinyURL que é mais resiliente a links muito longos/complexos
+        const response = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(mlLink)}`, {
+            timeout: 5000
+        });
+        if (response.data && response.data.startsWith('http')) {
+            finalLink = response.data;
         }
     } catch(err) {
-        logger.warn('Falha ao encurtar o link com is.gd. Mantendo link do ML.', err.message);
+        logger.warn('Falha ao encurtar o link. Mantendo original.', err.message);
     }
 
     const currentPrice = product.price;
