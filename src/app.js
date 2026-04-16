@@ -17,8 +17,24 @@ app.get('/health', (req, res) => res.status(200).json({ status: 'OK', timestamp:
 app.get('/', (req, res) => res.redirect('/qr'));
 
 // Rota de visualização do dashboard premium
-app.get('/qr', (req, res) => {
+app.get('/qr', async (req, res) => {
     const whatsappPublisher = require('./publishers/whatsapp.publisher');
+    const QRCode = require('qrcode');
+    
+    let qrImageHtml = '<p style="text-align:center;">Iniciando motor...</p>';
+    if (whatsappPublisher.latestQr) {
+        try {
+            const qrDataUrl = await QRCode.toDataURL(whatsappPublisher.latestQr, { width: 250, margin: 1 });
+            qrImageHtml = `
+                <div class="qr-box">
+                    <img src="${qrDataUrl}" alt="Baileys QR Code" style="width: 100%; height: auto; border-radius: 10px;" />
+                    <p style="text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">Escaneie para conectar</p>
+                </div>
+            `;
+        } catch (e) {
+            qrImageHtml = '<p style="text-align:center; color: red;">Erro ao gerar imagem do QR Code.</p>';
+        }
+    }
     
     res.send(`
         <!DOCTYPE html>
@@ -89,7 +105,7 @@ app.get('/qr', (req, res) => {
                     background: white; 
                     padding: 16px; 
                     border-radius: 20px; 
-                    width: 232px; 
+                    width: 250px; 
                     margin: 20px auto;
                     box-shadow: 0 0 40px rgba(255, 255, 255, 0.1);
                 }
@@ -194,13 +210,7 @@ app.get('/qr', (req, res) => {
                                     <div class="pairing-code">${whatsappPublisher.latestPairingCode}</div>
                                     <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 15px;">Configurações > Dispositivos Conectados > Conectar com número</p>
                                 </div>
-                            ` : `
-                                ${whatsappPublisher.latestQr ? `
-                                    <div class="qr-box" id="qrcode"></div>
-                                    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-                                    <script>new QRCode(document.getElementById("qrcode"), { text: "${whatsappPublisher.latestQr}", width: 200, height: 200 });</script>
-                                    <p style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">Escaneie para conectar</p>
-                                ` : '<p style="text-align:center;">Iniciando motor...</p>'}
+                            ` : qrImageHtml)}
                                 
                                 <div class="pairing-section">
                                     <form method="POST" action="/qr">
