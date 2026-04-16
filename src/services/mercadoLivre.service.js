@@ -96,40 +96,45 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                     return;
                 }
                 
-                // 💰 CAPTURA DE PREÇO MELHORADA (Evitando Parcelamento)
-                // Removemos elementos de parcelamento da busca para não pegar o valor da parcela por erro
-                const priceContainer = $(element).find('.poly-price__current, .ui-search-price--size-medium, .andes-money-amount--current').first();
+                // 💰 CAPTURA DE PREÇO - CORRIGIDA
+                // IMPORTANTE: .poly-price__current é um CONTAINER que tem AMBOS os preços (antigo e atual).
+                // Precisamos ir direto no span .andes-money-amount--current para o preço REAL.
                 
-                // Se o container de preço estiver dentro de uma div de parcelas, ignoramos
-                if (priceContainer.closest('.poly-price__installments, .ui-search-item__group__element--installments').length > 0) {
-                    // Tenta achar outro que não seja parcela
-                    logger.debug('⏩ Preço encontrado era uma parcela, tentando buscar o principal...');
-                }
-
-                let priceFrac = priceContainer.find('.andes-money-amount__fraction').first().text().replace(/\D/g, '');
+                // 1) Preço ATUAL (o que o cliente paga)
+                const currentMoneyEl = $(element).find('.andes-money-amount--current').filter(function() {
+                    // Ignora se estiver dentro de parcelas
+                    return $(this).closest('.poly-price__installments, .ui-search-item__group__element--installments').length === 0;
+                }).first();
                 
-                // Fallback para layouts onde o preço principal não tem a classe --current mas é o maior
+                let priceFrac = currentMoneyEl.find('.andes-money-amount__fraction').text().replace(/\D/g, '');
+                let priceCents = currentMoneyEl.find('.andes-money-amount__cents').text().replace(/\D/g, '') || '00';
+                
+                // Fallback: se --current não existir, pega o primeiro que NÃO seja --previous e NÃO seja parcela
                 if (!priceFrac) {
-                    priceFrac = $(element).find('.andes-money-amount__fraction').filter(function() {
-                        return $(this).closest('.poly-price__installments, .ui-search-item__group__element--installments').length === 0;
-                    }).first().text().replace(/\D/g, '');
+                    const fallbackEl = $(element).find('.andes-money-amount').filter(function() {
+                        return !$(this).hasClass('andes-money-amount--previous') &&
+                               $(this).closest('.poly-price__installments, .ui-search-item__group__element--installments').length === 0;
+                    }).first();
+                    priceFrac = fallbackEl.find('.andes-money-amount__fraction').text().replace(/\D/g, '');
+                    priceCents = fallbackEl.find('.andes-money-amount__cents').text().replace(/\D/g, '') || '00';
                 }
 
-                const priceCents = priceContainer.find('.andes-money-amount__cents').text().replace(/\D/g, '') || '00';
-                
-                // Pega o preço antigo (original)
-                const previousPriceEl = $(element).find('.andes-money-amount--previous').first();
-                const oldPriceFrac = previousPriceEl.find('.andes-money-amount__fraction').text().replace(/\D/g, '') ||
-                                     $(element).find('.ui-search-price__part--original .andes-money-amount__fraction').text().replace(/\D/g, '');
+                // 2) Preço ANTIGO (riscado)
+                const previousMoneyEl = $(element).find('.andes-money-amount--previous').first();
+                const oldPriceFrac = previousMoneyEl.find('.andes-money-amount__fraction').text().replace(/\D/g, '');
                 const oldPrice = oldPriceFrac ? parseFloat(oldPriceFrac) : null;
 
                 if (!priceFrac) return;
 
                 const price = parseFloat(`${priceFrac}.${priceCents}`);
                 
-                // Proteção contra capturar valor de parcelas pequenas como preço total
-                if (price < 100 && oldPrice > 500) {
-                     logger.debug(`⚠️ Preço capturado (R$ ${price}) parece ser uma parcela de (R$ ${oldPrice}). Ignorando.`);
+                // Proteção: se o preço atual for MAIOR que o antigo, algo saiu errado
+                if (oldPrice && price > oldPrice) {
+                     logger.debug(`⚠️ Preço atual (R$ ${price}) > antigo (R$ ${oldPrice}). Invertido. Corrigindo...`);
+                     // Inverte: o menor é o atual, o maior é o antigo
+                     const realPrice = oldPrice;
+                     const realOldPrice = price;
+                     // Não vamos usar as variáveis invertidas diretamente, vamos pular este produto
                      return;
                 }
                 
