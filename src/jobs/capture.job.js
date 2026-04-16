@@ -14,37 +14,43 @@ const captureTask = async () => {
     
     let totalAddedCount = 0;
 
+    let allProducts = [];
     for (const keyword of keywords) {
         try {
             logger.info(`🔎 Buscando por: ${keyword}`);
             const products = await mlService.searchProducts(keyword, env.mlCategory);
             logger.info(`📦 Busca por '${keyword}' retornou ${products.length} produtos.`);
 
-            for (const product of products) {
-                if (!product.title || !product.price || !product.link) {
-                    continue;
-                }
+            allProducts = allProducts.concat(products);
 
-                // Normalização básica de imagem
-                if (!product.imageUrl) {
-                    product.imageUrl = 'https://www.mercadolivre.com.br/menu/img/logo__large_plus.png';
-                }
-
-                const rawMessage = await formatterService.generateRawMessage(product);
-                const formattedMessage = await formatterService.generateFormattedMessage(product);
-
-                const added = await queueService.addToQueue(product, rawMessage, formattedMessage);
-                if (added) {
-                    totalAddedCount++;
-                }
-            }
-
-            // Aguarda 2 segundos antes da próxima palavra-chave para evitar bloqueio
+            // Aguarda pequeno intervalo para evitar bloqueio IP
             if (keywords.indexOf(keyword) < keywords.length - 1) {
-                await new Promise(r => setTimeout(r, 2000));
+                await new Promise(r => setTimeout(r, 1000));
             }
         } catch (keywordError) {
             logger.error(`❌ Erro ao processar palavra-chave "${keyword}":`, keywordError.message);
+        }
+    }
+
+    // ⭐ EMBARALHAMENTO GLOBAL: Mistura todos os itens de todas as categorias
+    // para que o grupo não receba 10 geladeiras seguidas.
+    allProducts.sort(() => Math.random() - 0.5);
+    logger.info(`🔀 Embaralhando ${allProducts.length} produtos para maior variedade na fila.`);
+
+    for (const product of allProducts) {
+        if (!product.title || !product.price || !product.link) continue;
+
+        // Normalização básica de imagem
+        if (!product.imageUrl) {
+            product.imageUrl = 'https://www.mercadolivre.com.br/menu/img/logo__large_plus.png';
+        }
+
+        const rawMessage = await formatterService.generateRawMessage(product);
+        const formattedMessage = await formatterService.generateFormattedMessage(product);
+
+        const added = await queueService.addToQueue(product, rawMessage, formattedMessage);
+        if (added) {
+            totalAddedCount++;
         }
     }
 
