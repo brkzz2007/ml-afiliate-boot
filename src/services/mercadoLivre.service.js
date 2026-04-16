@@ -203,6 +203,35 @@ const fetchFromBackupAPI = async (searchTerm) => {
 };
 
 /**
+ * Bypass via AllOrigins (Stealth Proxy 4)
+ */
+const searchViaAllOrigins = async (searchTerm, category = '') => {
+    try {
+        logger.info(`🕵️ Ativando Scraper Stealth (Proxy 4: AllOrigins) para: ${searchTerm}...`);
+        let targetUrl = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+        if (category) {
+            targetUrl = `https://lista.mercadolivre.com.br/${category}/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+        }
+
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+        
+        const { data } = await axios.get(proxyUrl, { timeout: 15000 });
+        
+        if (data && data.contents) {
+            const products = parseProducts(data.contents, searchTerm, true);
+            if (products.length > 0) {
+                logger.info(`🚀 Proxy 4 (AllOrigins) funcionou! (${products.length} itens)`);
+                return products;
+            }
+        }
+        return await fetchFromBackupAPI(searchTerm);
+    } catch (err) {
+        logger.warn(`⚠️ Erro no Proxy 4: ${err.message}`);
+        return await fetchFromBackupAPI(searchTerm);
+    }
+};
+
+/**
  * Bypass via Redirector Proxy (Stealth Proxy 3)
  */
 const searchViaRedirectProxy = async (searchTerm, category = '') => {
@@ -214,8 +243,6 @@ const searchViaRedirectProxy = async (searchTerm, category = '') => {
         }
 
         // Tenta usar um bypass de cache e um referer diferente
-        const bypassUrl = `https://www.google.com/url?q=${encodeURIComponent(targetUrl + '?b=' + Math.random().toString(36).substring(7))}`;
-        
         const { data: html } = await axios.get(targetUrl, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
@@ -230,9 +257,9 @@ const searchViaRedirectProxy = async (searchTerm, category = '') => {
             logger.info(`🚀 Proxy 3 funcionou! (${products.length} itens)`);
             return products;
         }
-        return await fetchFromBackupAPI(searchTerm);
+        return await searchViaAllOrigins(searchTerm, category);
     } catch (err) {
-        return await fetchFromBackupAPI(searchTerm);
+        return await searchViaAllOrigins(searchTerm, category);
     }
 };
 
