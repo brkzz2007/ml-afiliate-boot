@@ -191,12 +191,18 @@ class WhatsappPublisher {
       if (targetGroup) {
           try {
               const groups = await this.sock.groupFetchAllParticipating();
-              const group = Object.values(groups).find(g => g.subject.toLowerCase() === targetGroup.toLowerCase());
+              const groupName = targetGroup.toLowerCase().trim();
+              // Tenta match exato primeiro, depois parcial para ser mais resiliente
+              let group = Object.values(groups).find(g => g.subject.toLowerCase().trim() === groupName);
+              if (!group) {
+                  group = Object.values(groups).find(g => g.subject.toLowerCase().includes(groupName) || groupName.includes(g.subject.toLowerCase()));
+              }
               if (group) {
                   chatId = group.id;
-                  logger.debug(`Grupo encontrado: ${targetGroup} (${chatId})`);
+                  logger.info(`✅ Grupo encontrado: "${group.subject}" (${chatId})`);
               } else {
-                  logger.warn(`Grupo "${targetGroup}" não encontrado.`);
+                  const availableGroups = Object.values(groups).map(g => g.subject).join(', ');
+                  logger.warn(`❌ Grupo "${targetGroup}" não encontrado. Grupos disponíveis: ${availableGroups}`);
               }
           } catch (gErr) {
               logger.error('Erro ao buscar grupos:', gErr.message);
