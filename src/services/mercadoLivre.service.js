@@ -28,20 +28,27 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
         return link;
     };
 
-    // Seletores de itens
+    // Seletores de itens (Expandido para novos layouts)
     const containerSelectors = [
         '.poly-card', 
         '.ui-search-result__content-wrapper', 
+        '.ui-search-item',
         '.ui-search-result', 
         '.ui-search-layout__item',
         '.poly-card__content',
         'li.ui-search-layout__item'
     ];
     
+    let containerFound = false;
     containerSelectors.forEach(selector => {
         if (products.length >= 10) return;
+        const els = $(selector);
+        if (els.length > 0) {
+            containerFound = true;
+            logger.debug(`Found ${els.length} items with selector: ${selector}`);
+        }
         
-        $(selector).each((i, element) => {
+        els.each((i, element) => {
             if (products.length >= 10) return false;
             try {
                 // 🛑 VERIFICAÇÃO DE DISPONIBILIDADE
@@ -55,28 +62,29 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 const title = titleElement.text().trim();
 
                 // ⭐ VERIFICAÇÃO DE QUALIDADE (Avaliação e Vendas)
-                const ratingText = $(element).find('.poly-reviews__rating, .ui-search-reviews__rating-number').first().text();
+                const ratingElement = $(element).find('.poly-reviews__rating, .ui-search-reviews__rating-number, .ui-search-item__group__element--reviews').first();
+                const ratingText = ratingElement.text();
                 const rating = parseFloat(ratingText.replace(',', '.'));
                 
-                const reviewsCountText = $(element).find('.poly-reviews__total, .ui-search-reviews__amount').first().text();
-                const salesText = $(element).find('.poly-component__sales, .ui-search-item__group__element--shipping').text().toLowerCase();
+                const salesElement = $(element).find('.poly-component__sales, .ui-search-item__group__element--shipping, .ui-search-item__quantity-sold').first();
+                const salesText = salesElement.text().toLowerCase();
                 
-                // Critério: Se tiver avaliação e for menor que 4.0, a gente ignora. 
-                // Se não tiver avaliação nenhuma, a gente só aceita se for "Loja Oficial" ou tiver muitas vendas.
-                const isOfficialStore = $(element).text().toLowerCase().includes('loja oficial');
-                const hasGoodSales = salesText.includes('vendidos') && !salesText.includes('5 vendidos') && !salesText.includes('2 vendidos');
+                // Critério: Se tiver avaliação e for menor que 3.5 (baixamos de 4.0), a gente ignora. 
+                const isOfficialStore = $(element).text().toLowerCase().includes('loja oficial') || $(element).find('.ui-search-official-store-label').length > 0;
+                const hasGoodSales = salesText.includes('vendidos') || salesText.includes('full');
 
-                if (rating && rating < 4.0) {
+                // Filtro mais relaxado: Apenas ignora se for explicitamente avaliação baixa.
+                // Se não tiver avaliação nem vendas, nós ACEITAMOS se não tivermos alternativas, 
+                // mas para manter a qualidade inicial, vamos apenas logar e permitir se tiver preço coerente.
+                if (rating && rating < 3.5) {
                     logger.debug(`⏩ Ignorando "${title}" por baixa avaliação: ${rating}`);
                     return;
                 }
                 
-                if (!rating && !isOfficialStore && !hasGoodSales) {
-                    logger.debug(`⏩ Ignorando "${title}" por falta de indicadores de confiança.`);
-                    return;
-                }
+                // Se não tem nada de confiança, a gente marca como "unverified" mas NÃO descarta ainda
+                const isUnverified = !rating && !isOfficialStore && !hasGoodSales;
                 
-                // 💰 CAPTURA DE PREÇO MELHORADA (Pega o preço atual/final)
+                // 💰 CAPTURA DE PREÇO MELHORADA
                 const priceContainer = $(element).find('.andes-money-amount--current, .ui-search-price__second-line').first();
                 const priceFrac = priceContainer.find('.andes-money-amount__fraction').text().replace(/\D/g, '') || 
                                  $(element).find('.andes-money-amount__fraction').first().text().replace(/\D/g, '');
@@ -127,6 +135,14 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
         });
     });
 
+    if (products.length === 0 && !containerFound) {
+        if (html.includes('id="captcha"') || html.includes('g-recaptcha') || html.includes('challenge')) {
+            logger.warn(`🛑 Bloqueio detectado no conteúdo (Captcha/Challenge found).`);
+        } else {
+            logger.debug(`Nenhum seletor de container funcionou nesta página.`);
+        }
+    }
+
     return products;
 };
 
@@ -141,21 +157,24 @@ const getRandomBrIP = () => {
  */
 const fetchFromBackupAPI = async (searchTerm) => {
     // Tenta domínios diferentes caso um falhe no DNS (comum no Render)
-    const apiDomains = ['api.mercadolivre.com', 'api.mercadolibre.com'];
+    // Removido api.mercadolivre.com que estava dando ENOTFOUND
+    const apiDomains = ['api.mercadolibre.com'];
     
     for (const domain of apiDomains) {
         try {
             const fakeIP = getRandomBrIP();
             logger.info(`🔌 Tentando API Fallback (${domain}) para: ${searchTerm}...`);
             
-            await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
+            await new Promise(r => setTimeout(r, 1500 + Math.random() * 2000));
 
             const apiUrl = `https://${domain}/sites/MLB/search?q=${encodeURIComponent(searchTerm)}&limit=15`;
             
             const { data } = await axios.get(apiUrl, {
                 headers: {
-                    'User-Agent': 'MercadoLibre/10.354.0 (iPhone; iOS 17.4.1)',
+                    'User-Agent': 'MercadoLibre/10.428.1 (iPhone; iOS 17.5.1; Mobile/21F90)',
                     'X-Forwarded-For': fakeIP,
+                    'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8',
+                    'Accept': 'application/json'
                 },
                 timeout: 8000
             });
@@ -165,22 +184,56 @@ const fetchFromBackupAPI = async (searchTerm) => {
                     id: p.id,
                     title: p.title,
                     price: p.price,
-                    oldPrice: p.original_price, // Agora capturando o preço original da API
+                    oldPrice: p.original_price,
                     link: p.permalink,
                     imageUrl: p.thumbnail?.replace('-I.jpg', '-O.jpg'),
-                    description: 'Oferta (API Mobile)'
+                    description: 'Oferta Especial'
                 }));
                 logger.info(`✅ API Fallback (${domain}) funcionou para "${searchTerm}"!`);
                 return results;
             }
         } catch (apiErr) {
             logger.warn(`⚠️ Falha no domínio ${domain}: ${apiErr.message}`);
-            continue; // Tenta o próximo domínio
+            continue; 
         }
     }
     
     logger.error(`❌ Falha total em todos os domínios de API para "${searchTerm}".`);
     return [];
+};
+
+/**
+ * Bypass via Redirector Proxy (Stealth Proxy 3)
+ */
+const searchViaRedirectProxy = async (searchTerm, category = '') => {
+    try {
+        logger.info(`🕵️ Ativando Scraper Stealth (Proxy 3: Redirector) para: ${searchTerm}...`);
+        let targetUrl = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+        if (category) {
+            targetUrl = `https://lista.mercadolivre.com.br/${category}/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+        }
+
+        // Tenta usar um bypass de cache e um referer diferente
+        const bypassUrl = `https://www.google.com/url?q=${encodeURIComponent(targetUrl + '?b=' + Math.random().toString(36).substring(7))}`;
+        
+        const { data: html } = await axios.get(targetUrl, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+                'Accept-Language': 'pt-BR,pt;q=0.9',
+                'Referer': 'https://www.google.com.br/'
+            },
+            timeout: 10000
+        });
+
+        const products = parseProducts(html, searchTerm, true);
+        if (products.length > 0) {
+            logger.info(`🚀 Proxy 3 funcionou! (${products.length} itens)`);
+            return products;
+        }
+        return await fetchFromBackupAPI(searchTerm);
+    } catch (err) {
+        return await fetchFromBackupAPI(searchTerm);
+    }
 };
 
 /**
@@ -206,15 +259,14 @@ const searchViaBingProxy = async (searchTerm, category = '') => {
         const products = parseProducts(html, searchTerm, true);
         
         if (products.length === 0) {
-            logger.warn(`ℹ️ Proxy 2 (Bing) falhou para "${searchTerm}". Tentando API Fallback...`);
-            return await fetchFromBackupAPI(searchTerm);
+            logger.warn(`ℹ️ Proxy 2 (Bing) falhou. Tentando Proxy 3...`);
+            return await searchViaRedirectProxy(searchTerm, category);
         }
 
-        logger.info(`🚀 Proxy 2 (Bing) funcionou! (${products.length} itens) para "${searchTerm}".`);
+        logger.info(`🚀 Proxy 2 (Bing) funcionou! (${products.length} itens)`);
         return products;
     } catch (err) {
-        logger.warn(`⚠️ Erro no Proxy 2 (Bing): ${err.message}. Tentando API Fallback...`);
-        return await fetchFromBackupAPI(searchTerm);
+        return await searchViaRedirectProxy(searchTerm, category);
     }
 };
 
@@ -229,14 +281,13 @@ const searchViaStealthProxy = async (searchTerm, category = '') => {
              targetUrl = `https://lista.mercadolivre.com.br/${category}/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
         }
         
-        // Adiciona bypass de cache
         targetUrl += `${targetUrl.includes('?') ? '&' : '?'}b=${Math.random().toString(36).substring(7)}`;
 
         const proxyUrl = `https://translate.google.com/translate?sl=en&tl=pt&u=${encodeURIComponent(targetUrl)}`;
         
         const { data: html } = await axios.get(proxyUrl, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8',
             },
             timeout: 15000
@@ -245,14 +296,14 @@ const searchViaStealthProxy = async (searchTerm, category = '') => {
         const products = parseProducts(html, searchTerm, true);
         
         if (products.length === 0) {
-            logger.warn(`ℹ️ Proxy 1 (Google) falhou para "${searchTerm}". Tentando Proxy 2 (Bing)...`);
+            logger.warn(`ℹ️ Proxy 1 (Google) falhou. Tentando Proxy 2 (Bing)...`);
             return await searchViaBingProxy(searchTerm, category);
         }
 
-        logger.info(`🚀 Proxy 1 (Google) funcionou! (${products.length} itens) para "${searchTerm}".`);
+        logger.info(`🚀 Proxy 1 (Google) funcionou! (${products.length} itens)`);
         return products;
     } catch (err) {
-        logger.warn(`⚠️ Erro no Proxy 1 (Google): ${err.message}. Tentando Proxy 2 (Bing)...`);
+        logger.warn(`⚠️ Erro no Proxy 1: ${err.message}. Tentando Proxy 2 (Bing)...`);
         return await searchViaBingProxy(searchTerm, category);
     }
 };
@@ -281,26 +332,20 @@ const searchProducts = async (searchTerm, category = '') => {
     ];
 
     try {
-        let url = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-        if (category) {
-            url = `https://lista.mercadolivre.com.br/${category}/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-        }
+        // Formato mais simples de busca que muitas vezes ignora alguns filtros de bot
+        const url = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}_NoIndex_True`;
         
         const selectedUA = userAgents[Math.floor(Math.random() * userAgents.length)];
-        const selectedRef = referers[Math.floor(Math.random() * referers.length)];
 
-        logger.debug(`Requisição direta para: ${url}`);
+        logger.info(`🔌 Tentativa Direta (Simples) para: ${searchTerm}...`);
         
         const { data: html, status } = await axios.get(url, {
             headers: {
                 'User-Agent': selectedUA,
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8',
-                'Referer': selectedRef,
-                'Cache-Control': 'max-age=0',
-                'Sec-Ch-Ua': '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"'
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'pt-BR,pt;q=0.9',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
             },
             timeout: 10000,
             validateStatus: () => true
@@ -314,6 +359,7 @@ const searchProducts = async (searchTerm, category = '') => {
         const products = parseProducts(html, searchTerm);
         
         if (products.length === 0) {
+            // Se o scraper direto falhar (pode ser seletor ou bloqueio silencioso)
             logger.info(`ℹ️ 0 produtos no scraper direto para "${searchTerm}". Tentando Modo Stealth...`);
             return await searchViaStealthProxy(searchTerm, category);
         }

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const repository = require('../database/repository');
+const logger = require('../config/logger');
 const { captureTask } = require('../jobs/capture.job');
 const { publishTask } = require('../jobs/publisher.job');
 

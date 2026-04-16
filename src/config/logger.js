@@ -15,6 +15,7 @@ const logger = winston.createLogger({
 
 // Adiciona o console por padrão para vermos nos logs do Render/Cloud
 logger.add(new winston.transports.Console({
+    level: 'info',
     format: winston.format.combine(
         winston.format.colorize(),
         winston.format.simple()
