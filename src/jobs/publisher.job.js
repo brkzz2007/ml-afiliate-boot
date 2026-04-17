@@ -57,9 +57,9 @@ const publishTaskContinuo = async () => {
                 logger.error(`Falha ao publicar item ${item.id}.`);
             }
             
-            // Pausa de 25 a 45 segundos para o WhatsApp não bloquear como SPAM/Flood, mas mantendo o bot rodando de forma contínua
-            const delayMs = Math.floor(Math.random() * (45000 - 25000 + 1)) + 25000;
-            logger.info(`⏳ Aguardando ${delayMs/1000}s antes da próxima publicação para evitar bloqueio do WhatsApp...`);
+            // Pausa de 3 minutos fixos entre pubicações (solicitado pelo usuário) para evitar bloqueios do WhatsApp
+            const delayMs = 180000; // 3 minutos
+            logger.info(`⏳ Intervalo seguro: Aguardando 3 minutos antes do próximo envio...`);
             await new Promise(r => setTimeout(r, delayMs));
         }
     } catch (error) {
