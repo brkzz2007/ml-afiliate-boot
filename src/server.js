@@ -61,6 +61,18 @@ const startServer = async () => {
     startCaptureJob();
     startPublishJob();
     logger.info('⚙️ Jobs de automação agendados.');
+
+    // ✅ PASSO 5: Keep-Alive para evitar spindown do Render
+    const externalUrl = process.env.RENDER_EXTERNAL_HOSTNAME;
+    if (externalUrl) {
+        logger.info(`🔄 Keep-alive ativado para ${externalUrl}`);
+        setInterval(() => {
+            const http = require('https');
+            http.get(`https://${externalUrl}/health`).on('error', (err) => {
+                logger.error(`Erro no keep-alive: ${err.message}`);
+            });
+        }, 14 * 60 * 1000); // 14 minutos
+    }
 };
 
 startServer().catch(err => {
