@@ -204,13 +204,14 @@ app.get('/qr', async (req, res) => {
                                     <p style="font-weight: 600; color: var(--accent);">Bot Ativo e Conectado</p>
                                     <p style="font-size: 0.8rem; color: var(--text-muted);">Pronto para publicar ofertas.</p>
                                 </div>
-                            ` : (whatsappPublisher.latestPairingCode ? `
-                                <div style="text-align: center;">
-                                    <p style="font-size: 0.9rem; color: var(--text-muted);">Insira este código no WhatsApp:</p>
-                                    <div class="pairing-code">${whatsappPublisher.latestPairingCode}</div>
-                                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 15px;">Configurações > Dispositivos Conectados > Conectar com número</p>
-                                </div>
-                            ` : qrImageHtml)}
+                            ` : `
+                                ${whatsappPublisher.latestPairingCode ? `
+                                    <div style="text-align: center;">
+                                        <p style="font-size: 0.9rem; color: var(--text-muted);">Insira este código no WhatsApp:</p>
+                                        <div class="pairing-code">${whatsappPublisher.latestPairingCode}</div>
+                                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 15px;">Configurações > Dispositivos Conectados > Conectar com número</p>
+                                    </div>
+                                ` : qrImageHtml}
                                 
                                 <div class="pairing-section">
                                     <form method="POST" action="/qr">
@@ -218,7 +219,7 @@ app.get('/qr', async (req, res) => {
                                         <button type="submit" class="btn btn-primary">Gerar Código de Pareamento</button>
                                     </form>
                                 </div>
-                            `)}
+                            `}
                         </div>
 
                         <div class="card">
