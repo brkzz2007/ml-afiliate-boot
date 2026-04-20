@@ -3,30 +3,30 @@ const axios = require('axios');
 const logger = require('../config/logger');
 
 class FormatterService {
-  formatLink(link) {
-      if (!link) return '';
-      
-      // Tenta extrair o ID MLB (Ex: MLB44160351)
-      const mlbMatch = link.match(/(MLB[U]?\d+)/i);
-      if (mlbMatch) {
-          const productId = mlbMatch[1];
-          // Formato oficial mais curto possível: mercadolivre.com.br/p/MLB...
-          const shortBase = `https://www.mercadolivre.com.br/p/${productId}`;
-          
-          if (env.mlAffiliateTag) {
-              return `${shortBase}?matt_tool=${env.mlAffiliateTag}`;
-          }
-          return shortBase;
-      }
+  async formatLink(link) {
+    if (!link) return '';
+    try {
+        // Tenta encurtar via is.gd (grátis e sem API key)
+        const response = await axios.get(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(link)}`, { timeout: 5000 });
+        if (response.data && response.data.includes('http')) {
+            return response.data;
+        }
+    } catch (err) {
+        logger.warn('Falha ao usar encurtador is.gd, usando link /p/ simplificado.');
+    }
 
-      // Fallback caso não ache o ID
-      let cleanLink = link.split('?')[0];
-      if (env.mlAffiliateTag) return `${cleanLink}?matt_tool=${env.mlAffiliateTag}`;
-      return cleanLink;
+    // Fallback: Link /p/ oficial (caso o encurtador falhe)
+    const mlbMatch = link.match(/(MLB[U]?\d+)/i);
+    if (mlbMatch) {
+        const productId = mlbMatch[1];
+        const shortBase = `https://www.mercadolivre.com.br/p/${productId}`;
+        return env.mlAffiliateTag ? `${shortBase}?matt_tool=${env.mlAffiliateTag}` : shortBase;
+    }
+    return link;
   }
 
   async generateRawMessage(product) {
-    const link = this.formatLink(product.link);
+    const link = await this.formatLink(product.link);
     return `Imagem: ${product.imageUrl}\nTítulo: ${product.title}\nDescrição: ${product.description}\nValor: R$ ${product.price.toFixed(2)}\nLink: ${link}`;
   }
 
@@ -72,7 +72,7 @@ class FormatterService {
   }
 
   async generateFormattedMessage(product) {
-    const finalLink = this.formatLink(product.link);
+    const finalLink = await this.formatLink(product.link);
     const currentPrice = product.price;
 
     const phrases = [

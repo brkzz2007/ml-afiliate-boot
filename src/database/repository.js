@@ -55,16 +55,47 @@ const updateQueueStatus = async (id, status) => {
 };
 
 const getNextApprovedItem = async () => {
-    // Mudamos de RANDOM() para created_at ASC para seguir a ordem da fila embaralhada na captura
-    const query = `
-        SELECT q.*, p.title, p.image_url 
-        FROM queue q 
-        JOIN products p ON q.product_id = p.id 
-        WHERE q.status = 'approved' 
-        ORDER BY q.created_at ASC 
-        LIMIT 1
-    `;
-    return await db.get(query, []);
+    try {
+        // 1. Descobrir qual o nicho do último item postado (para evitar repetição de nicho)
+        const lastSentQuery = `
+            SELECT p.description FROM queue q 
+            JOIN products p ON q.product_id = p.id 
+            WHERE q.status = 'published' 
+            ORDER BY q.updated_at DESC LIMIT 1
+        `;
+        const lastSent = await db.get(lastSentQuery, []);
+        const lastNiche = lastSent ? lastSent.description : '';
+
+        // 2. Tentar pegar um produto APROVADO que seja de um nicho DIFERENTE do último enviado
+        let query = `
+            SELECT q.*, p.title, p.image_url, p.description 
+            FROM queue q 
+            JOIN products p ON q.product_id = p.id 
+            WHERE q.status = 'approved' 
+            AND p.description != ?
+            ORDER BY q.created_at ASC 
+            LIMIT 1
+        `;
+        let item = await db.get(query, [lastNiche]);
+
+        // 3. Fallback: Se não achar de nicho diferente, pega qualquer aprovado
+        if (!item) {
+            query = `
+                SELECT q.*, p.title, p.image_url, p.description 
+                FROM queue q 
+                JOIN products p ON q.product_id = p.id 
+                WHERE q.status = 'approved' 
+                ORDER BY q.created_at ASC 
+                LIMIT 1
+            `;
+            item = await db.get(query, []);
+        }
+
+        return item;
+    } catch (err) {
+        logger.error('Erro ao buscar próximo item da fila:', err);
+        return null;
+    }
 };
 
 const clearQueue = async () => {
