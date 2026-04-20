@@ -73,23 +73,8 @@ class FormatterService {
   async generateFormattedMessage(product) {
     const finalLink = this.formatLink(product.link);
     const currentPrice = product.price;
-    const hasDiscount = product.hasDiscount || (product.oldPrice && product.oldPrice > currentPrice);
     
-    let priceSection = '';
-
-    if (hasDiscount && product.oldPrice && product.oldPrice > currentPrice) {
-        // Produto com desconto REAL verificado
-        const discountPercent = Math.round(((product.oldPrice - currentPrice) / product.oldPrice) * 100);
-        priceSection = `✖️ De: R$ ${product.oldPrice.toFixed(2)}\n🤑 Por: R$ ${currentPrice.toFixed(2)} 😱🔥 ${discountPercent}% OFF`;
-    } else {
-        // Produto sem desconto explícito — mostra só o preço atual (honesto)
-        priceSection = `💰 Por apenas: R$ ${currentPrice.toFixed(2)}`;
-    }
-
-    const creativeTitle = this.getCreativeTitle(hasDiscount);
-    const urgencyPhrase = this.getUrgencyPhrase();
-
-    return `${creativeTitle}\n\n*${product.title}*\n\n${priceSection}\n\n🚛 *FRETE GRÁTIS*\n\n${urgencyPhrase}\n\n🔗🛒👇\n${finalLink}`;
+    return `*APROVEITA AMIGAS 😱🔥*\n\n🛍️ ${product.title}\n\n💰 *R$ ${currentPrice.toFixed(2).replace('.', ',')} 😱🔥*\n\n🛒 Compre aqui: ${finalLink}`;
   }
 }
 

@@ -12,7 +12,7 @@ const saveProduct = async (product) => {
         const res = await db.run(query, [product.id, product.title, product.price, product.link, product.imageUrl, product.description]);
         return res.rowCount;
     } catch (err) {
-        logger.error('Erro ao salvar produto no Neon:', err);
+        logger.error('Erro ao salvar produto no Banco:', err);
         throw err;
     }
 };
@@ -32,7 +32,7 @@ const enqueueProduct = async (queueItem) => {
         const res = await db.run(query, [queueItem.productId, queueItem.rawMessage, queueItem.formattedMessage]);
         return res.rowCount;
     } catch (err) {
-        logger.error('Erro ao enfileirar no Neon:', err);
+        logger.error('Erro ao enfileirar no Banco:', err);
         throw err;
     }
 };
@@ -55,7 +55,15 @@ const updateQueueStatus = async (id, status) => {
 };
 
 const getNextApprovedItem = async () => {
-    const query = "SELECT q.*, p.title, p.image_url FROM queue q JOIN products p ON q.product_id = p.id WHERE q.status = 'approved' ORDER BY q.updated_at ASC LIMIT 1";
+    // Mudamos de RANDOM() para created_at ASC para seguir a ordem da fila embaralhada na captura
+    const query = `
+        SELECT q.*, p.title, p.image_url 
+        FROM queue q 
+        JOIN products p ON q.product_id = p.id 
+        WHERE q.status = 'approved' 
+        ORDER BY q.created_at ASC 
+        LIMIT 1
+    `;
     return await db.get(query, []);
 };
 

@@ -19,6 +19,9 @@ const captureTask = async () => {
         return;
     }
 
+    // ⭐ EMBARALHAMENTO DE KEYWORDS: Garante que cada ciclo de captura seja imprevisível
+    allKeywords.sort(() => Math.random() - 0.5);
+
     // 🔄 ROTAÇÃO: Processa no máximo 10 keywords por ciclo para evitar timeout
     // A cada hora, pega as próximas 10 da lista (rotação circular)
     const maxPerCycle = 10;

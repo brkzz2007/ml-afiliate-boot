@@ -35,10 +35,10 @@ const startServer = async () => {
             dbOk = true;
             logger.info('✅ Banco de dados pronto.');
             
-            // 🧹 LIMPEZA FORÇADA PARA MUDANÇA DE NICHO
-            const repository = require('./database/repository');
-            await repository.clearQueue();
-            logger.info('🧹 Limpeza forçada de transição de nicho realizada com sucesso!');
+            // 🧹 LIMPEZA FORÇADA PARA MUDANÇA DE NICHO (Descomente se necessário)
+            // const repository = require('./database/repository');
+            // await repository.clearQueue();
+            // logger.info('🧹 Limpeza forçada de transição de nicho realizada com sucesso!');
             
             break;
         } catch (err) {

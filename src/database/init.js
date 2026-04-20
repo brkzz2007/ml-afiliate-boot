@@ -39,12 +39,12 @@ const db = {
                 return { rowCount: res.rowCount };
             } else {
                 const stmt = sqliteDb.prepare(query);
-                // better-sqlite3 run can take params as multiple arguments or an array
-                const result = stmt.run(...params);
+                // better-sqlite3: passar o array diretamente é mais seguro que o spread operator
+                const result = stmt.run(params); 
                 return { rowCount: result.changes };
             }
         } catch (err) {
-            logger.error(`❌ Erro no Banco (${USE_NEON ? 'Neon' : 'SQLite'}): ${err.message}`, { query, params });
+            logger.error(`❌ Erro no Banco (${USE_NEON ? 'Neon' : 'SQLite'}): ${err.message}`, { query });
             throw err;
         }
     },
@@ -57,7 +57,7 @@ const db = {
                 return res.rows[0];
             } else {
                 const stmt = sqliteDb.prepare(query);
-                return stmt.get(...params);
+                return stmt.get(params);
             }
         } catch (err) {
             logger.error(`❌ Erro no Banco (GET): ${err.message}`, { query, params });
@@ -73,7 +73,7 @@ const db = {
                 return res.rows;
             } else {
                 const stmt = sqliteDb.prepare(query);
-                return stmt.all(...params);
+                return stmt.all(params);
             }
         } catch (err) {
             logger.error(`❌ Erro no Banco (ALL): ${err.message}`, { query, params });
