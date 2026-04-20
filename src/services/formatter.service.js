@@ -6,19 +6,22 @@ class FormatterService {
   formatLink(link) {
       if (!link) return '';
       
-      // Se já for um link encurtado (meli.la ou mercadolivre.com/sec), mantemos
-      if (link.includes('meli.la') || link.includes('mercadolivre.com/sec')) {
-          return link;
+      // Tenta extrair o ID MLB (Ex: MLB44160351)
+      const mlbMatch = link.match(/(MLB[U]?\d+)/i);
+      if (mlbMatch) {
+          const productId = mlbMatch[1];
+          // Formato oficial mais curto possível: mercadolivre.com.br/p/MLB...
+          const shortBase = `https://www.mercadolivre.com.br/p/${productId}`;
+          
+          if (env.mlAffiliateTag) {
+              return `${shortBase}?matt_tool=${env.mlAffiliateTag}`;
+          }
+          return shortBase;
       }
 
-      // Limpeza agressiva para deixar o link curto
+      // Fallback caso não ache o ID
       let cleanLink = link.split('?')[0];
-      if (cleanLink.includes('#')) cleanLink = cleanLink.split('#')[0];
-      
-      // Adiciona a tag de afiliado de forma limpa
-      if (env.mlAffiliateTag) {
-          return `${cleanLink}?matt_tool=${env.mlAffiliateTag}`;
-      }
+      if (env.mlAffiliateTag) return `${cleanLink}?matt_tool=${env.mlAffiliateTag}`;
       return cleanLink;
   }
 
@@ -74,7 +77,7 @@ class FormatterService {
 
     const phrases = [
       'Gente, olha esse achadinho! 😱🔥',
-      'Pára tudo e olha esse preço! 😍🔥',
+      'Págra tudo e olha esse preço! 😍🔥',
       'Aquele precinho que a gente ama! 🤑✨',
       'Dica de ouro pra vocês hoje! 💎🛍️',
       'Achei e precisei compartilhar! 🤩🔥',
@@ -85,7 +88,10 @@ class FormatterService {
     ];
     const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
     
-    return `${randomPhrase}\n\n🛍️ ${product.title}\n\n💰 R$ ${currentPrice.toFixed(2).replace('.', ',')} 😱🔥\n\n🛒 Compre aqui: ${finalLink}`;
+    // Detector de cupons (Simulado se não houver no objeto, mas pronto para receber)
+    const couponLine = product.coupon ? `\n🎟️ Cupom: *${product.coupon}*\n` : '\n🎟️ Verifique se há cupons na página!\n';
+
+    return `${randomPhrase}\n\n🛍️ *${product.title}*\n${couponLine}\n💰 R$ ${currentPrice.toFixed(2).replace('.', ',')} 😱🔥\n\n🛒 Compre aqui: ${finalLink}`;
   }
 }
 
