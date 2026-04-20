@@ -6,22 +6,20 @@ class FormatterService {
   formatLink(link) {
       if (!link) return '';
       
-      // Extrair o ID do produto (MLB ou MLBU) para montar um link curto oficial do ML
-      const mlbMatch = link.match(/(MLB[U]?\d+)/i);
-      if (mlbMatch) {
-          const productId = mlbMatch[1];
-          const shortLink = `https://www.mercadolivre.com.br/p/${productId}`;
-          if (env.mlAffiliateTag) {
-              return `${shortLink}?matt_tool=${env.mlAffiliateTag}`;
-          }
-          return shortLink;
+      // Se já for um link encurtado (meli.la ou mercadolivre.com/sec), mantemos
+      if (link.includes('meli.la') || link.includes('mercadolivre.com/sec')) {
+          return link;
       }
 
-      // Fallback: limpa e adiciona tag
+      // Limpeza agressiva para deixar o link curto
       let cleanLink = link.split('?')[0];
       if (cleanLink.includes('#')) cleanLink = cleanLink.split('#')[0];
-      if (!env.mlAffiliateTag) return cleanLink;
-      return `${cleanLink}?matt_tool=${env.mlAffiliateTag}`;
+      
+      // Adiciona a tag de afiliado de forma limpa
+      if (env.mlAffiliateTag) {
+          return `${cleanLink}?matt_tool=${env.mlAffiliateTag}`;
+      }
+      return cleanLink;
   }
 
   async generateRawMessage(product) {
@@ -74,7 +72,8 @@ class FormatterService {
     const finalLink = this.formatLink(product.link);
     const currentPrice = product.price;
     
-    return `*APROVEITA AMIGAS 😱🔥*\n\n🛍️ ${product.title}\n\n💰 *R$ ${currentPrice.toFixed(2).replace('.', ',')} 😱🔥*\n\n🛒 Compre aqui: ${finalLink}`;
+    // Formato idêntico ao print: Sem negritos, emojis exatos e espaçamento
+    return `APROVEITA AMIGAS 😱🔥\n\n🛍️ ${product.title}\n\n💰 R$ ${currentPrice.toFixed(2).replace('.', ',')} 😱🔥\n\n🛒 Compre aqui: ${finalLink}`;
   }
 }
 
