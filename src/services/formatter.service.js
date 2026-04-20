@@ -29,6 +29,11 @@ class FormatterService {
     return link.split('?')[0]; // Remove query strings lixo
   }
 
+  async generateRawMessage(product) {
+    const link = await this.formatLink(product.link);
+    return `Imagem: ${product.imageUrl}\nTítulo: ${product.title}\nValor: R$ ${product.price.toFixed(2)}\nLink: ${link}`;
+  }
+
   async generateFormattedMessage(product) {
     const finalLink = await this.formatLink(product.link);
     const currentPrice = product.price;
