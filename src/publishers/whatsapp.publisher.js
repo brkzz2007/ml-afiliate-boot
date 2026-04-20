@@ -53,12 +53,12 @@ class WhatsappPublisher {
           for (const file of files) {
               const filePath = path.join(this.authPath, file);
               if (fs.lstatSync(filePath).isFile()) {
-                  const data = fs.readFileSync(filePath, 'utf-8');
+                  const data = fs.readFileSync(filePath); // Lendo como Buffer (Binário)
                   await saveSessionFile(file, data);
               }
           }
       } catch (e) {
-          logger.warn(`Erro na sincronização total para o Neon:`, e.message);
+          logger.warn(`Erro na sincronização total: ${e.message}`);
       }
   }
 

@@ -118,7 +118,7 @@ const DDL = {
     sessions: `
         CREATE TABLE IF NOT EXISTS sessions (
             id TEXT PRIMARY KEY,
-            data TEXT NOT NULL,
+            data ${USE_NEON ? 'BYTEA' : 'BLOB'} NOT NULL,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`
 };
