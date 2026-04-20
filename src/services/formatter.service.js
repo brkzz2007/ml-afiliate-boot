@@ -71,9 +71,21 @@ class FormatterService {
   async generateFormattedMessage(product) {
     const finalLink = this.formatLink(product.link);
     const currentPrice = product.price;
+
+    const phrases = [
+      'Gente, olha esse achadinho! 😱🔥',
+      'Pára tudo e olha esse preço! 😍🔥',
+      'Aquele precinho que a gente ama! 🤑✨',
+      'Dica de ouro pra vocês hoje! 💎🛍️',
+      'Achei e precisei compartilhar! 🤩🔥',
+      'Corre que esse tá valendo muito! 🏃💨',
+      'Duvido você achar mais barato! 💸✨',
+      'Um luxo pra sua casa com esse preço! 🏠💖',
+      'Estoque deve acabar rápido, aproveitem! ⏳🔥'
+    ];
+    const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
     
-    // Formato idêntico ao print: Sem negritos, emojis exatos e espaçamento
-    return `APROVEITA AMIGAS 😱🔥\n\n🛍️ ${product.title}\n\n💰 R$ ${currentPrice.toFixed(2).replace('.', ',')} 😱🔥\n\n🛒 Compre aqui: ${finalLink}`;
+    return `${randomPhrase}\n\n🛍️ ${product.title}\n\n💰 R$ ${currentPrice.toFixed(2).replace('.', ',')} 😱🔥\n\n🛒 Compre aqui: ${finalLink}`;
   }
 }
 
