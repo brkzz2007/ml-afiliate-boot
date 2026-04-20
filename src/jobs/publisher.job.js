@@ -55,6 +55,11 @@ const publishTaskContinuo = async () => {
                 logger.info(`✅ Item ${item.id} publicado com sucesso.`);
             } else {
                 logger.error(`Falha ao publicar item ${item.id}.`);
+                // Se falhou porque o WhatsApp não estava pronto, esperamos menos tempo (10s) para tentar o próximo
+                if (!publisher.isReady) {
+                    await new Promise(r => setTimeout(r, 10000));
+                    continue;
+                }
             }
             
             // Pausa de 3 minutos fixos entre pubicações (solicitado pelo usuário) para evitar bloqueios do WhatsApp
