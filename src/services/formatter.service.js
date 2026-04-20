@@ -40,13 +40,27 @@ class FormatterService {
     const oldPrice = product.oldPrice || (currentPrice * 1.15);
     const coupon = product.coupon || 'OFERTAOFF';
 
+    const alerts = [
+      'Gente, olha esse achadinho! 😱🔥',
+      'Pára tudo e olha esse preço! 😍✨',
+      'Achei e precisei mostrar pra vocês! 🤩',
+      'Aquele precinho que a gente ama! 🤑',
+      'Dica de ouro pra vcs hoje! ✨🛍️',
+      'Socorro, olha esse desconto! 🔥🚨',
+      'Corre que esse tá valendo muito! 🏃💨',
+      'Duvido você achar mais barato! 💸✨',
+      'Um luxo pra sua casa com esse preço! 🏠💖',
+      'Cata essa oferta que acabou de sair! 🔔🔥'
+    ];
+    const randomAlert = alerts[Math.floor(Math.random() * alerts.length)];
+
     return [
-      `*CORREEE E PEGA SEU CUPOM 😱*`,
+      `*${randomAlert}*`,
       ``,
       `${product.title}`,
       ``,
       `De: ~R$ ${oldPrice.toFixed(2).replace('.', ',')}~`,
-      `*POOR: R$ ${currentPrice.toFixed(2).replace('.', ',')} ✅*`,
+      `*POR: R$ ${currentPrice.toFixed(2).replace('.', ',')} ✅*`,
       ``,
       `🎟️ Use o cupom: *${coupon}*`,
       ``,
