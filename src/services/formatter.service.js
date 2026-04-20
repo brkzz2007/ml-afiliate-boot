@@ -74,24 +74,35 @@ class FormatterService {
   async generateFormattedMessage(product) {
     const finalLink = await this.formatLink(product.link);
     const currentPrice = product.price;
-
-    const phrases = [
-      'Gente, olha esse achadinho! 😱🔥',
-      'Págra tudo e olha esse preço! 😍🔥',
-      'Aquele precinho que a gente ama! 🤑✨',
-      'Dica de ouro pra vocês hoje! 💎🛍️',
-      'Achei e precisei compartilhar! 🤩🔥',
-      'Corre que esse tá valendo muito! 🏃💨',
-      'Duvido você achar mais barato! 💸✨',
-      'Um luxo pra sua casa com esse preço! 🏠💖',
-      'Estoque deve acabar rápido, aproveitem! ⏳🔥'
-    ];
-    const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+    const oldPrice = product.oldPrice || (currentPrice * 1.2); // Simula um preço antigo se não houver
     
-    // Detector de cupons (Simulado se não houver no objeto, mas pronto para receber)
-    const couponLine = product.coupon ? `\n🎟️ Cupom: *${product.coupon}*\n` : '\n🎟️ Verifique se há cupons na página!\n';
+    // Lista de Chamadas de Cupom Variadas
+    const alerts = [
+      'CORREEE E PEGA SEU CUPOM 😱',
+      'ALERTA DE PREÇO BAIXO 🚨',
+      'ACABOU DE BAIXAR! 📉🔥',
+      'OFERTA COM CUPOM ATIVO 🎫',
+      'MENOR PREÇO DOS ÚLTIMOS DIAS 💰'
+    ];
+    const randomAlert = alerts[Math.floor(Math.random() * alerts.length)];
 
-    return `${randomPhrase}\n\n🛍️ *${product.title}*\n${couponLine}\n💰 R$ ${currentPrice.toFixed(2).replace('.', ',')} 😱🔥\n\n🛒 Compre aqui: ${finalLink}`;
+    // Simulação de cupom (Se o produto tiver, ele usa, senão usa um genérico de categoria ou instrução)
+    const coupon = product.coupon || 'OFERTAOFF';
+
+    const message = [
+      `*${randomAlert}*`,
+      '',
+      `${product.title}`,
+      '',
+      `De: ~R$ ${oldPrice.toFixed(2).replace('.', ',')}~`,
+      `*POR: R$ ${currentPrice.toFixed(2).replace('.', ',')} ✅*`,
+      '',
+      `🎟️ Use o cupom:  *${coupon}*`,
+      '',
+      `🛒 Compre aqui: ${finalLink}`
+    ].join('\n');
+
+    return message;
   }
 }
 
