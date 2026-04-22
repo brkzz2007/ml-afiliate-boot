@@ -5,7 +5,7 @@ module.exports = {
   nodeEnv: process.env.NODE_ENV || 'production',
   databaseUrl: process.env.DATABASE_URL,
   dbPath: process.env.DB_PATH || './database.sqlite',
-  mlSearchKeyword: process.env.ML_SEARCH_KEYWORD || 'Fogão, Geladeira, Máquina de lavar, Cama box, Guarda-roupa, Sofá, Smart TV, Air Fryer, Liquidificador, Micro-ondas, Cafeteira, Panelas indução, Jogo de pratos, Faqueiro, Potes herméticos, Mop limpeza, Aspirador de pó, Ventilador, Painel TV, Mesa de jantar, Colchão casal, Travesseiros, Edredom, Toalhas banho, Chuveiro elétrico, Organizadores, Armário de cozinha, Cooktop, Forno elétrico, Batedeira, Sanduicheira, Purificador de água',
+  mlSearchKeyword: process.env.ML_SEARCH_KEYWORD || 'Cozinha, Jogo de Panelas, Frigideira antiaderente, Air fryer, Liquidificador, Cafeteira, Potes organizadores, Escorredor de louça, Garrafa térmica, Porta temperos, Tábua de corte, Mop giratório, Vassoura e rodo, Balde dobrável, Panos de microfibra, Escova multiuso, Aspirador de pó, Luvas de limpeza, Varal portátil, Cesto de roupa, Prendedores, Ferro de passar, Tábua de passar, Organizadores de roupa, Travesseiros, Jogos de cama, Cobertor, Cortinas, Tapetes, Caixas organizadoras, Organizador de gaveta, Nichos, Prateleiras, Carrinho organizador, Extensão elétrica, Filtro de linha, Lâmpada LED, Luminária, Ventilador, Toalhas, Tapete de banheiro, Suporte de parede, Espelho',
   mlCategory: process.env.ML_CATEGORY || '',
   cronCaptureSchedule: process.env.CRON_CAPTURE_SCHEDULE || '0 * * * *',
   cronPublishSchedule: process.env.CRON_PUBLISH_SCHEDULE || '*/3 * * * *',
