@@ -38,11 +38,6 @@ const captureTask = async () => {
     logger.info(`📋 Ciclo de captura: ${selectedKeywords.length} de ${allKeywords.length} keywords (Bloco a partir do #${startIndex + 1})`);
     logger.info(`📋 Keywords deste ciclo: ${selectedKeywords.join(', ')}`);
     
-    // ⭐ ADICIONA "OFERTAS" NO INÍCIO DE CADA CICLO PARA GARANTIR QUALIDADE
-    if (!selectedKeywords.includes('Ofertas')) {
-        selectedKeywords.unshift('Ofertas');
-    }
-    
     let totalAddedCount = 0;
 
     for (const keyword of selectedKeywords) {
