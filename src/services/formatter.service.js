@@ -80,22 +80,17 @@ class FormatterService {
     const randomAlert = alerts[Math.floor(Math.random() * alerts.length)];
 
     return [
-      `✨ *${randomAlert}*`,
+      `🚨 *${randomAlert}*`,
       ``,
-      `🏠 *${product.title}*`,
+      `*${product.title}*`,
       ``,
       `❌ De: ~R$ ${oldPrice.toFixed(2).replace('.', ',')}~`,
-      `🔥 *POR: R$ ${currentPrice.toFixed(2).replace('.', ',')}*`,
-      `💳 *PIX ou 1x no Cartão*`,
+      `✅ *POR: R$ ${currentPrice.toFixed(2).replace('.', ',')}*`,
       ``,
-      `💎 *Destaque:* ⭐ 4.8+ | 🚚 Frete Rápido`,
-      `🎟️ Cupom: *${coupon}* (se disponível)`,
+      `🛒 *COMPRAR:* ${finalLink}`,
       ``,
-      `🛒 *COMPRE AGORA:*`,
-      `${finalLink}`,
-      ``,
-      `👉 *ENTRE NO GRUPO:* linktr.ee/ofertalarafi`,
-      `⚠️ *O PREÇO PODE ALTERAR A QUALQUER MOMENTO!*`
+      `📦 *Vendido e entregue pelo Mercado Livre*`,
+      `⚠️ *O valor pode mudar a qualquer momento.*`
     ].join('\n');
   }
 }
