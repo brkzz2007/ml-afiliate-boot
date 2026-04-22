@@ -310,13 +310,15 @@ const fetchViaProxy = async (proxyName, proxyUrl, searchTerm, category, nextProx
 };
 
 const searchViaAllOrigins = async (searchTerm, category = '') => {
-    const targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+    const cacheBuster = Math.floor(Math.random() * 100);
+    const targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}_Discount_10-100_NoIndex_True?b=${cacheBuster}`;
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
     return await fetchViaProxy('Proxy 4 (AllOrigins)', proxyUrl, searchTerm, category, fetchFromBackupAPI);
 };
 
 const searchViaRedirectProxy = async (searchTerm, category = '') => {
-    const targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+    const cacheBuster = Math.floor(Math.random() * 100);
+    const targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}_Discount_10-100_NoIndex_True?b=${cacheBuster}`;
     return await fetchViaProxy('Proxy 3 (Redirect)', targetUrl, searchTerm, category, searchViaAllOrigins, {
         headers: {
             'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
@@ -326,14 +328,15 @@ const searchViaRedirectProxy = async (searchTerm, category = '') => {
 };
 
 const searchViaBingProxy = async (searchTerm, category = '') => {
-    const targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+    const cacheBuster = Math.floor(Math.random() * 100);
+    const targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}_Discount_10-100_NoIndex_True?b=${cacheBuster}`;
     const proxyUrl = `https://www.bing.com/translator/?to=pt&url=${encodeURIComponent(targetUrl)}`;
     return await fetchViaProxy('Proxy 2 (Bing)', proxyUrl, searchTerm, category, searchViaRedirectProxy);
 };
 
 const searchViaStealthProxy = async (searchTerm, category = '') => {
-    let targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-    targetUrl += `${targetUrl.includes('?') ? '&' : '?'}b=${Math.random().toString(36).substring(7)}`;
+    const cacheBuster = Math.floor(Math.random() * 100);
+    let targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}_Discount_10-100_NoIndex_True?b=${cacheBuster}`;
     const proxyUrl = `https://translate.google.com/translate?sl=en&tl=pt&u=${encodeURIComponent(targetUrl)}`;
     return await fetchViaProxy('Proxy 1 (Google)', proxyUrl, searchTerm, category, searchViaBingProxy);
 };
@@ -386,8 +389,10 @@ const searchProducts = async (searchTerm, category = '') => {
     ];
 
     try {
-        // Formato mais simples de busca que muitas vezes ignora alguns filtros de bot
-        const url = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}_NoIndex_True`;
+        // 🔥 OTIMIZAÇÃO: Busca apenas itens com DESCONTO (mínimo 10%) para garantir promoções reais
+        // E adiciona um buster de cache para evitar resultados repetidos
+        const cacheBuster = Math.floor(Math.random() * 100);
+        const url = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}_Discount_10-100_NoIndex_True?b=${cacheBuster}`;
         
         const selectedUA = userAgents[Math.floor(Math.random() * userAgents.length)];
 
