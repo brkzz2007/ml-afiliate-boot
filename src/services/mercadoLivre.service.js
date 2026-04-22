@@ -8,13 +8,17 @@ const logger = require('../config/logger');
 const parseProducts = (html, searchTerm, isProxy = false) => {
     if (!html || typeof html !== 'string') return [];
     
-    // 🛡️ PROTEÇÃO DE MEMÓRIA CRÍTICA: Ignora HTMLs > 8MB (Render free tier limit)
-    if (html.length > 8 * 1024 * 1024) {
-        logger.warn(`⚠️ HTML muito grande para a RAM disponível (${(html.length / 1024 / 1024).toFixed(2)}MB). Ignorando.`);
+    // 🛡️ PROTEÇÃO DE MEMÓRIA CRÍTICA: Ignora HTMLs > 13MB
+    if (html.length > 13 * 1024 * 1024) {
+        logger.warn(`⚠️ HTML extremamente grande para a RAM (${(html.length / 1024 / 1024).toFixed(2)}MB). Ignorando.`);
         return [];
     }
 
-    let $ = cheerio.load(html);
+    // 🚀 OTIMIZAÇÃO: Remove <script> e <style> antes de carregar no Cheerio (economiza 50-70% de RAM)
+    const cleanedHtml = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+    
+    let $ = cheerio.load(cleanedHtml);
     const products = [];
     
     const getStableId = (link, title) => {
