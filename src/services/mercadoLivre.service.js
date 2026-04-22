@@ -99,7 +99,7 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 const isOfficialStore = $(element).text().toLowerCase().includes('loja oficial') || $(element).find('.ui-search-official-store-label').length > 0;
                 const hasGoodSales = salesText.includes('vendidos') || salesText.includes('full');
 
-                if (rating && rating < 3.5) {
+                if (rating && rating < 4.5) {
                     logger.debug(`⏩ Ignorando "${title}" por baixa avaliação: ${rating}`);
                     return;
                 }
