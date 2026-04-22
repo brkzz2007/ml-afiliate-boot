@@ -2,6 +2,18 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const logger = require('../config/logger');
 
+// 🛑 FILTRO DE NICHO (CASA): Ignora ferramentas pesadas, eletrônicos gamer e itens automotivos
+const PRODUCT_BLACKLIST = [
+    'martelete', 'parafusadeira', 'furadeira', 'ferramenta', 'pneu', 'pc gamer', 
+    'oficina', 'mecanico', 'gamer', 'brinquedo', 'peca de carro', 'moto',
+    'chave de fenda', 'serra', 'trena', 'multimetro', 'politriz', 'esmerilhadeira',
+    'carro', 'automotivo', 'automotiva', 'veículo', 'veicular', 'capacete', 'retrovisor',
+    'farol', 'calota', 'volante', 'protetor solar para carro', 'limpador de parabrisa',
+    'óleo de motor', 'bateria de carro', 'som automotivo', 'central multimídia',
+    'tapete de carro', 'capa de banco', 'suporte celular carro', 'transmissor fm',
+    'carregador veicular', 'p/ carro', 'para carro'
+];
+
 /**
  * Parser unificado para as páginas do Mercado Livre
  */
@@ -75,13 +87,8 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 const title = titleElement.text().trim();
                 if (!title) return;
 
-                // 🛑 FILTRO DE NICHO (CASA): Ignora ferramentas pesadas, eletrônicos gamer e itens automotivos
-                const blacklist = [
-                    'martelete', 'parafusadeira', 'furadeira', 'ferramenta', 'pneu', 'pc gamer', 
-                    'oficina', 'mecanico', 'gamer', 'brinquedo', 'peca de carro', 'moto', 'bivolt',
-                    'chave de fenda', 'serra', 'trena', 'multimetro', 'politriz', 'esmerilhadeira'
-                ];
-                if (blacklist.some(word => title.toLowerCase().includes(word))) {
+                // 🛑 FILTRO DE NICHO (CASA)
+                if (PRODUCT_BLACKLIST.some(word => title.toLowerCase().includes(word))) {
                     logger.debug(`⏩ Ignorando "${title}" por não ser do nicho Casa.`);
                     return;
                 }
@@ -250,11 +257,12 @@ const fetchFromBackupAPI = async (searchTerm) => {
                 timeout: 8000
             });
             
-            if (data.results && data.results.length > 0) {
-                // Filtrar apenas produtos com rating decente se disponível na API
-                const results = data.results
-                    .filter(p => !p.title.toLowerCase().includes('usado')) // Garante novos
-                    .map(p => ({
+                if (data.results && data.results.length > 0) {
+                    // Filtrar apenas produtos com rating decente se disponível na API
+                    const results = data.results
+                        .filter(p => !p.title.toLowerCase().includes('usado')) // Garante novos
+                        .filter(p => !PRODUCT_BLACKLIST.some(word => p.title.toLowerCase().includes(word))) // Filtro de nicho
+                        .map(p => ({
                         id: p.id,
                         title: p.title,
                         price: p.price,
