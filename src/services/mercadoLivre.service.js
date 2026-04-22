@@ -71,8 +71,12 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 const title = titleElement.text().trim();
                 if (!title) return;
 
-                // 🛑 FILTRO DE NICHO (CASA): Ignora ferramentas pesadas e itens nada a ver
-                const blacklist = ['martelete', 'parafusadeira', 'furadeira', 'ferramenta', 'pneu', 'pc gamer', 'oficina', 'mecanico', 'gamer'];
+                // 🛑 FILTRO DE NICHO (CASA): Ignora ferramentas pesadas, eletrônicos gamer e itens automotivos
+                const blacklist = [
+                    'martelete', 'parafusadeira', 'furadeira', 'ferramenta', 'pneu', 'pc gamer', 
+                    'oficina', 'mecanico', 'gamer', 'brinquedo', 'peca de carro', 'moto', 'bivolt',
+                    'chave de fenda', 'serra', 'trena', 'multimetro', 'politriz', 'esmerilhadeira'
+                ];
                 if (blacklist.some(word => title.toLowerCase().includes(word))) {
                     logger.debug(`⏩ Ignorando "${title}" por não ser do nicho Casa.`);
                     return;
@@ -270,136 +274,60 @@ const fetchFromBackupAPI = async (searchTerm) => {
 };
 
 /**
- * Bypass via AllOrigins (Stealth Proxy 4)
+ * Função Genérica de Proxy Stealth para reduzir repetição de código
  */
-const searchViaAllOrigins = async (searchTerm, category = '') => {
+const fetchViaProxy = async (proxyName, proxyUrl, searchTerm, category, nextProxyFn, options = {}) => {
     try {
-        logger.info(`🕵️ Ativando Scraper Stealth (Proxy 4: AllOrigins) para: ${searchTerm}...`);
-        let targetUrl = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-        if (category) {
-            targetUrl = `https://lista.mercadolivre.com.br/${category}/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-        }
-
-        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-        
-        const { data } = await axios.get(proxyUrl, { timeout: 15000 });
-        
-        if (data && data.contents) {
-            const products = parseProducts(data.contents, searchTerm, true);
-            if (products.length > 0) {
-                logger.info(`🚀 Proxy 4 (AllOrigins) funcionou! (${products.length} itens)`);
-                return products;
-            }
-        }
-        return await fetchFromBackupAPI(searchTerm);
-    } catch (err) {
-        logger.warn(`⚠️ Erro no Proxy 4: ${err.message}`);
-        return await fetchFromBackupAPI(searchTerm);
-    }
-};
-
-/**
- * Bypass via Redirector Proxy (Stealth Proxy 3)
- */
-const searchViaRedirectProxy = async (searchTerm, category = '') => {
-    try {
-        logger.info(`🕵️ Ativando Scraper Stealth (Proxy 3: Redirector) para: ${searchTerm}...`);
-        let targetUrl = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-        if (category) {
-            targetUrl = `https://lista.mercadolivre.com.br/${category}/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-        }
-
-        // Tenta usar um bypass de cache e um referer diferente
-        const { data: html } = await axios.get(targetUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+        logger.info(`🕵️ Ativando ${proxyName} para: ${searchTerm}...`);
+        const { data: html } = await axios.get(proxyUrl, {
+            headers: options.headers || {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 'Accept-Language': 'pt-BR,pt;q=0.9',
-                'Referer': 'https://www.google.com.br/'
             },
-            timeout: 10000
+            timeout: 15000
         });
 
         const products = parseProducts(html, searchTerm, true);
         if (products.length > 0) {
-            logger.info(`🚀 Proxy 3 funcionou! (${products.length} itens)`);
+            logger.info(`🚀 ${proxyName} funcionou! (${products.length} itens)`);
             return products;
         }
-        return await searchViaAllOrigins(searchTerm, category);
+        
+        if (nextProxyFn) return await nextProxyFn(searchTerm, category);
     } catch (err) {
-        return await searchViaAllOrigins(searchTerm, category);
+        logger.warn(`⚠️ Erro no ${proxyName}: ${err.message}`);
+        if (nextProxyFn) return await nextProxyFn(searchTerm, category);
     }
+    return [];
 };
 
-/**
- * Bypass via Bing Translator (Stealth Proxy 2)
- */
+const searchViaAllOrigins = async (searchTerm, category = '') => {
+    const targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+    return await fetchViaProxy('Proxy 4 (AllOrigins)', proxyUrl, searchTerm, category, fetchFromBackupAPI);
+};
+
+const searchViaRedirectProxy = async (searchTerm, category = '') => {
+    const targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+    return await fetchViaProxy('Proxy 3 (Redirect)', targetUrl, searchTerm, category, searchViaAllOrigins, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+            'Referer': 'https://www.google.com.br/'
+        }
+    });
+};
+
 const searchViaBingProxy = async (searchTerm, category = '') => {
-    try {
-        logger.info(`🕵️ Ativando Scraper Stealth (Proxy 2: Bing) para: ${searchTerm}...`);
-        let targetUrl = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-        if (category) {
-            targetUrl = `https://lista.mercadolivre.com.br/${category}/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-        }
-
-        const proxyUrl = `https://www.bing.com/translator/?to=pt&url=${encodeURIComponent(targetUrl)}`;
-        
-        const { data: html } = await axios.get(proxyUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-            },
-            timeout: 15000
-        });
-
-        const products = parseProducts(html, searchTerm, true);
-        
-        if (products.length === 0) {
-            logger.warn(`ℹ️ Proxy 2 (Bing) falhou. Tentando Proxy 3...`);
-            return await searchViaRedirectProxy(searchTerm, category);
-        }
-
-        logger.info(`🚀 Proxy 2 (Bing) funcionou! (${products.length} itens)`);
-        return products;
-    } catch (err) {
-        return await searchViaRedirectProxy(searchTerm, category);
-    }
+    const targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+    const proxyUrl = `https://www.bing.com/translator/?to=pt&url=${encodeURIComponent(targetUrl)}`;
+    return await fetchViaProxy('Proxy 2 (Bing)', proxyUrl, searchTerm, category, searchViaRedirectProxy);
 };
 
-/**
- * Bypass de IP via Google Translate (Stealth Proxy 1)
- */
 const searchViaStealthProxy = async (searchTerm, category = '') => {
-    try {
-        logger.info(`🕵️ Ativando Scraper Stealth (Proxy 1: Google) para: ${searchTerm}...`);
-        let targetUrl = `https://lista.mercadolivre.com.br/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-        if (category) {
-             targetUrl = `https://lista.mercadolivre.com.br/${category}/${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
-        }
-        
-        targetUrl += `${targetUrl.includes('?') ? '&' : '?'}b=${Math.random().toString(36).substring(7)}`;
-
-        const proxyUrl = `https://translate.google.com/translate?sl=en&tl=pt&u=${encodeURIComponent(targetUrl)}`;
-        
-        const { data: html } = await axios.get(proxyUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-                'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8',
-            },
-            timeout: 15000
-        });
-
-        const products = parseProducts(html, searchTerm, true);
-        
-        if (products.length === 0) {
-            logger.warn(`ℹ️ Proxy 1 (Google) falhou. Tentando Proxy 2 (Bing)...`);
-            return await searchViaBingProxy(searchTerm, category);
-        }
-
-        logger.info(`🚀 Proxy 1 (Google) funcionou! (${products.length} itens)`);
-        return products;
-    } catch (err) {
-        logger.warn(`⚠️ Erro no Proxy 1: ${err.message}. Tentando Proxy 2 (Bing)...`);
-        return await searchViaBingProxy(searchTerm, category);
-    }
+    let targetUrl = `https://lista.mercadolivre.com.br/${category ? category + '/' : ''}${encodeURIComponent(searchTerm).replace(/%20/g, '-')}`;
+    targetUrl += `${targetUrl.includes('?') ? '&' : '?'}b=${Math.random().toString(36).substring(7)}`;
+    const proxyUrl = `https://translate.google.com/translate?sl=en&tl=pt&u=${encodeURIComponent(targetUrl)}`;
+    return await fetchViaProxy('Proxy 1 (Google)', proxyUrl, searchTerm, category, searchViaBingProxy);
 };
 
 /**
