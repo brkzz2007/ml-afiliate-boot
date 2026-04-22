@@ -6,6 +6,14 @@ const logger = require('../config/logger');
  * Parser unificado para as páginas do Mercado Livre
  */
 const parseProducts = (html, searchTerm, isProxy = false) => {
+    if (!html || typeof html !== 'string') return [];
+    
+    // 🛡️ PROTEÇÃO DE MEMÓRIA: Ignora HTMLs gigantes (> 5MB) que podem causar OOM
+    if (html.length > 5 * 1024 * 1024) {
+        logger.warn(`⚠️ HTML muito grande capturado (${(html.length / 1024 / 1024).toFixed(2)}MB). Ignorando para evitar Crash.`);
+        return [];
+    }
+
     const $ = cheerio.load(html);
     const products = [];
     

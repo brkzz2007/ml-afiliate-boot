@@ -22,9 +22,9 @@ const captureTask = async () => {
     // ⭐ EMBARALHAMENTO DE KEYWORDS: Garante que cada ciclo de captura seja imprevisível
     allKeywords.sort(() => Math.random() - 0.5);
 
-    // 🔄 ROTAÇÃO: Processa no máximo 10 keywords por ciclo para evitar timeout
-    // A cada hora, pega as próximas 10 da lista (rotação circular)
-    const maxPerCycle = 10;
+    // 🔄 ROTAÇÃO: Processa poucas keywords por ciclo para evitar OOM (Out of Memory) no Render
+    // A cada execução, pega as próximas 6 da lista (rotação circular)
+    const maxPerCycle = 6;
     const startIndex = keywordRotationIndex % allKeywords.length;
     let selectedKeywords = [];
     
@@ -44,7 +44,6 @@ const captureTask = async () => {
     }
     
     let totalAddedCount = 0;
-    let allProducts = [];
 
     for (const keyword of selectedKeywords) {
         try {
@@ -52,37 +51,36 @@ const captureTask = async () => {
             const products = await mlService.searchProducts(keyword, env.mlCategory);
             logger.info(`📦 Busca por '${keyword}' retornou ${products.length} produtos.`);
 
-            allProducts = allProducts.concat(products);
+            if (products.length > 0) {
+                // Embaralha os produtos da keyword atual para variedade
+                products.sort(() => Math.random() - 0.5);
 
-            // Aguarda pequeno intervalo para evitar bloqueio IP
-            await new Promise(r => setTimeout(r, 1500 + Math.random() * 1500));
+                for (const product of products) {
+                    if (!product.title || !product.price || !product.link) continue;
+
+                    // Normalização básica de imagem
+                    if (!product.imageUrl) {
+                        product.imageUrl = 'https://www.mercadolivre.com.br/menu/img/logo__large_plus.png';
+                    }
+
+                    try {
+                        const rawMessage = await formatterService.generateRawMessage(product);
+                        const formattedMessage = await formatterService.generateFormattedMessage(product);
+
+                        const added = await queueService.addToQueue(product, rawMessage, formattedMessage);
+                        if (added) {
+                            totalAddedCount++;
+                        }
+                    } catch (fmtErr) {
+                        logger.warn(`⚠️ Erro ao formatar/enfileirar "${product.title}": ${fmtErr.message}`);
+                    }
+                }
+            }
+
+            // Aguarda pequeno intervalo para evitar bloqueio IP e aliviar memória
+            await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
         } catch (keywordError) {
             logger.error(`❌ Erro ao processar palavra-chave "${keyword}":`, keywordError.message);
-        }
-    }
-
-    // ⭐ EMBARALHAMENTO GLOBAL: Mistura todos os itens de todas as categorias
-    allProducts.sort(() => Math.random() - 0.5);
-    logger.info(`🔀 Embaralhando ${allProducts.length} produtos para maior variedade na fila.`);
-
-    for (const product of allProducts) {
-        if (!product.title || !product.price || !product.link) continue;
-
-        // Normalização básica de imagem
-        if (!product.imageUrl) {
-            product.imageUrl = 'https://www.mercadolivre.com.br/menu/img/logo__large_plus.png';
-        }
-
-        try {
-            const rawMessage = await formatterService.generateRawMessage(product);
-            const formattedMessage = await formatterService.generateFormattedMessage(product);
-
-            const added = await queueService.addToQueue(product, rawMessage, formattedMessage);
-            if (added) {
-                totalAddedCount++;
-            }
-        } catch (fmtErr) {
-            logger.warn(`⚠️ Erro ao formatar/enfileirar "${product.title}": ${fmtErr.message}`);
         }
     }
 
