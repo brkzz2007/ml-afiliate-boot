@@ -8,13 +8,13 @@ const logger = require('../config/logger');
 const parseProducts = (html, searchTerm, isProxy = false) => {
     if (!html || typeof html !== 'string') return [];
     
-    // 🛡️ PROTEÇÃO DE MEMÓRIA: Ignora HTMLs gigantes (> 20MB) que podem causar OOM
-    if (html.length > 20 * 1024 * 1024) {
-        logger.warn(`⚠️ HTML extremamente grande capturado (${(html.length / 1024 / 1024).toFixed(2)}MB). Ignorando para evitar Crash.`);
+    // 🛡️ PROTEÇÃO DE MEMÓRIA: Ignora HTMLs gigantes (> 14MB) que podem causar OOM no Render
+    if (html.length > 14 * 1024 * 1024) {
+        logger.warn(`⚠️ HTML muito grande capturado (${(html.length / 1024 / 1024).toFixed(2)}MB). Ignorando para evitar Crash.`);
         return [];
     }
 
-    const $ = cheerio.load(html);
+    let $ = cheerio.load(html);
     const products = [];
     
     const getStableId = (link, title) => {
@@ -188,6 +188,12 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
         } else {
             logger.debug(`Nenhum seletor de container funcionou nesta página.`);
         }
+    }
+
+    // ⭐ LIMPEZA DE MEMÓRIA PÓS-PARSE
+    $ = null; 
+    if (global.gc) {
+        try { global.gc(); } catch (e) {}
     }
 
     // ⭐ EMBARALHAMENTO PARA MAIS VARIEDADE
