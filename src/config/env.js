@@ -13,7 +13,7 @@ module.exports = {
   whatsappTargetNumber: process.env.WHATSAPP_TARGET_NUMBER || '5569984520192',
   whatsappTargetGroup: process.env.WHATSAPP_TARGET_GROUP || 'OfertaLar #17',
   mlAffiliateTag: process.env.ML_AFFILIATE_TAG || 'bv20260330080614',
-  initialCaptureDelay: 10000,
+  initialCaptureDelay: 60000,
   publishStartTime: process.env.PUBLISH_START_TIME || '08:00',
   publishEndTime: process.env.PUBLISH_END_TIME || '22:00',
   renderExternalUrl: process.env.RENDER_EXTERNAL_URL || null,
