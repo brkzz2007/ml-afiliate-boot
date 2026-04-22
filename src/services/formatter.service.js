@@ -8,19 +8,28 @@ class FormatterService {
 
     const tag = env.mlAffiliateTag || 'bv20260330080614';
     
-    // 🛍️ CONSTRUÇÃO DE LINK OFICIAL (Formato Profissional)
-    // Extrai o código MLB (ex: MLB12345678)
+    let finalLink = '';
     const mlbMatch = link.match(/(MLB[U]?\d+)/i);
     
     if (mlbMatch) {
       const id = mlbMatch[1];
-      // Retorna o link oficial "limpo" do ML que já ativa o seu afiliado
-      return `https://www.mercadolivre.com.br/p/${id}?matt_tool=${tag}`;
+      finalLink = `https://www.mercadolivre.com.br/p/${id}?matt_tool=${tag}`;
+    } else {
+      const baseLink = link.split('?')[0];
+      finalLink = `${baseLink}?matt_tool=${tag}`;
     }
 
-    // Caso não seja um link de produto direto, apenas anexa a tag de forma limpa
-    const baseLink = link.split('?')[0];
-    return `${baseLink}?matt_tool=${tag}`;
+    // 🔗 Tenta encurtar para deixar o link pequeno
+    try {
+      const res = await axios.get(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(finalLink)}`, { timeout: 4000 });
+      if (res.data && res.data.includes('http')) {
+        return res.data;
+      }
+    } catch (e) {
+      logger.debug(`Falha ao encurtar link: ${e.message}`);
+    }
+
+    return finalLink;
   }
 
   async generateRawMessage(product) {
