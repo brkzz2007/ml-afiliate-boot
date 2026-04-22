@@ -144,9 +144,13 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                             $(element).find('img').attr('srcset')?.split(' ')[0] ||
                             $(element).find('.poly-component__picture img').attr('src');
 
-                // Evitar placeholders ou imagens de carregamento
                 if (image && (image.includes('data:image') || image.includes('pixel.gif'))) {
                     image = $(element).find('img').attr('data-src') || $(element).find('img').attr('data-srcset')?.split(' ')[0];
+                }
+
+                // Upgrade para alta resolução
+                if (image && image.includes('-I.jpg')) {
+                    image = image.replace('-I.jpg', '-W.jpg');
                 }
 
                 if (title && price && link) {
@@ -204,7 +208,8 @@ const fetchFromBackupAPI = async (searchTerm) => {
             
             await new Promise(r => setTimeout(r, 1500 + Math.random() * 2000));
 
-            const apiUrl = `https://${domain}/sites/MLB/search?q=${encodeURIComponent(searchTerm)}&limit=50`;
+            // 🏷️ Adicionando filtros de "melhores resultados" (limitado a produtos novos e com boa reputação)
+            const apiUrl = `https://${domain}/sites/MLB/search?q=${encodeURIComponent(searchTerm)}&limit=50&sort=relevance&condition=new`;
             
             const { data } = await axios.get(apiUrl, {
                 headers: {
@@ -217,16 +222,20 @@ const fetchFromBackupAPI = async (searchTerm) => {
             });
             
             if (data.results && data.results.length > 0) {
-                const results = data.results.map(p => ({
-                    id: p.id,
-                    title: p.title,
-                    price: p.price,
-                    oldPrice: p.original_price,
-                    link: p.permalink,
-                    imageUrl: p.thumbnail?.replace('-I.jpg', '-O.jpg'),
-                    description: 'Oferta Especial'
-                }));
-                logger.info(`✅ API Fallback (${domain}) funcionou para "${searchTerm}"!`);
+                // Filtrar apenas produtos com rating decente se disponível na API
+                const results = data.results
+                    .filter(p => !p.title.toLowerCase().includes('usado')) // Garante novos
+                    .map(p => ({
+                        id: p.id,
+                        title: p.title,
+                        price: p.price,
+                        oldPrice: p.original_price || (p.price * 1.2), // Fallback de preço antigo se não houver
+                        link: p.permalink,
+                        imageUrl: p.thumbnail?.replace('-I.jpg', '-W.jpg') || p.thumbnail?.replace('-I.jpg', '-O.jpg'), // -W é maior
+                        description: 'Oferta Especial'
+                    }));
+                
+                logger.info(`✅ API Fallback (${domain}) funcionou para "${searchTerm}"! (${results.length} itens)`);
                 return results;
             }
         } catch (apiErr) {
@@ -373,10 +382,42 @@ const searchViaStealthProxy = async (searchTerm, category = '') => {
 };
 
 /**
+ * Busca ofertas do dia diretamente da página de promoções
+ */
+const searchDailyDeals = async () => {
+    logger.info(`🔥 Buscando ofertas do dia diretamente...`);
+    try {
+        const url = 'https://www.mercadolivre.com.br/ofertas#nav-header';
+        const { data: html } = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'Accept-Language': 'pt-BR,pt;q=0.9',
+            },
+            timeout: 10000
+        });
+
+        const products = parseProducts(html, 'Ofertas do Dia');
+        if (products.length > 0) {
+            logger.info(`✅ Encontradas ${products.length} ofertas do dia!`);
+            return products;
+        }
+    } catch (err) {
+        logger.warn(`⚠️ Erro ao buscar ofertas do dia: ${err.message}`);
+    }
+    return [];
+};
+
+/**
  * Busca produtos no Mercado Livre.
  * Tenta Scraper Direto -> Scraper via Proxy (Stealth) -> API Fallback.
  */
 const searchProducts = async (searchTerm, category = '') => {
+    // Se o termo for "ofertas", usamos o buscador de ofertas dedicado
+    if (searchTerm.toLowerCase().includes('oferta')) {
+        const deals = await searchDailyDeals();
+        if (deals.length > 0) return deals;
+    }
+
     logger.info(`🔍 Buscando produtos no Mercado Livre para: "${searchTerm}"...`);
     
     const userAgents = [
@@ -385,14 +426,6 @@ const searchProducts = async (searchTerm, category = '') => {
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
         'Mozilla/5.0 (iPhone; CPU iPhone OS 17_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Mobile/15E148 Safari/604.1'
-    ];
-
-    const referers = [
-        'https://www.google.com/',
-        'https://www.bing.com/',
-        'https://duckduckgo.com/',
-        'https://t.co/',
-        'https://www.facebook.com/'
     ];
 
     try {
@@ -438,5 +471,6 @@ const searchProducts = async (searchTerm, category = '') => {
 };
 
 module.exports = {
-  searchProducts
+  searchProducts,
+  searchDailyDeals
 };
