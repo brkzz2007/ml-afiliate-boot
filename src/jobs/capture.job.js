@@ -38,8 +38,8 @@ const captureTask = async () => {
     logger.info(`📋 Ciclo de captura: ${selectedKeywords.length} de ${allKeywords.length} keywords (Bloco a partir do #${startIndex + 1})`);
     logger.info(`📋 Keywords deste ciclo: ${selectedKeywords.join(', ')}`);
     
-    let totalAddedCount = 0;
-
+    const allProductsInCycle = [];
+    
     for (const keyword of selectedKeywords) {
         try {
             logger.info(`🔎 Buscando por: ${keyword}`);
@@ -47,35 +47,39 @@ const captureTask = async () => {
             logger.info(`📦 Busca por '${keyword}' retornou ${products.length} produtos.`);
 
             if (products.length > 0) {
-                // Embaralha os produtos da keyword atual para variedade
-                products.sort(() => Math.random() - 0.5);
-
-                for (const product of products) {
-                    if (!product.title || !product.price || !product.link) continue;
-
-                    // Normalização básica de imagem
-                    if (!product.imageUrl) {
-                        product.imageUrl = 'https://www.mercadolivre.com.br/menu/img/logo__large_plus.png';
-                    }
-
-                    try {
-                        const rawMessage = await formatterService.generateRawMessage(product);
-                        const formattedMessage = await formatterService.generateFormattedMessage(product);
-
-                        const added = await queueService.addToQueue(product, rawMessage, formattedMessage);
-                        if (added) {
-                            totalAddedCount++;
-                        }
-                    } catch (fmtErr) {
-                        logger.warn(`⚠️ Erro ao formatar/enfileirar "${product.title}": ${fmtErr.message}`);
-                    }
-                }
+                allProductsInCycle.push(...products);
             }
 
-            // Aguarda pequeno intervalo para evitar bloqueio IP e aliviar memória
+            // Aguarda pequeno intervalo para evitar bloqueio IP
             await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
         } catch (keywordError) {
             logger.error(`❌ Erro ao processar palavra-chave "${keyword}":`, keywordError.message);
+        }
+    }
+
+    // ⭐ EMBARALHAMENTO TOTAL DO CICLO: Mistura produtos de diferentes keywords
+    // Isso evita postar 10 lixeiras seguidas se a keyword 'Lixeira' for processada.
+    allProductsInCycle.sort(() => Math.random() - 0.5);
+
+    let totalAddedCount = 0;
+    for (const product of allProductsInCycle) {
+        if (!product.title || !product.price || !product.link) continue;
+
+        // Normalização básica de imagem
+        if (!product.imageUrl) {
+            product.imageUrl = 'https://www.mercadolivre.com.br/menu/img/logo__large_plus.png';
+        }
+
+        try {
+            const rawMessage = await formatterService.generateRawMessage(product);
+            const formattedMessage = await formatterService.generateFormattedMessage(product);
+
+            const added = await queueService.addToQueue(product, rawMessage, formattedMessage);
+            if (added) {
+                totalAddedCount++;
+            }
+        } catch (fmtErr) {
+            logger.warn(`⚠️ Erro ao formatar/enfileirar "${product.title}": ${fmtErr.message}`);
         }
     }
 
