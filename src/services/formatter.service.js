@@ -87,10 +87,7 @@ class FormatterService {
       `❌ De: ~R$ ${oldPrice.toFixed(2).replace('.', ',')}~`,
       `✅ *POR: R$ ${currentPrice.toFixed(2).replace('.', ',')}*`,
       ``,
-      `🛒 *COMPRAR:* ${finalLink}`,
-      ``,
-      `📦 *Vendido e entregue pelo Mercado Livre*`,
-      `⚠️ *O valor pode mudar a qualquer momento.*`
+      `🛒 *COMPRAR:* ${finalLink}`
     ].join('\n');
   }
 }
