@@ -117,29 +117,24 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 const salesElement = $(element).find('.poly-component__sales, .ui-search-item__group__element--shipping, .ui-search-item__quantity-sold').first();
                 const salesText = salesElement.text().toLowerCase();
                 
-                // Critério: Se tiver avaliação e for menor que 3.5 (baixamos de 4.0), a gente ignora. 
+                // Critério de Sofisticação: Priorizamos Loja Oficial e Full
                 const isOfficialStore = $(element).text().toLowerCase().includes('loja oficial') || $(element).find('.ui-search-official-store-label').length > 0;
-                const hasGoodSales = salesText.includes('vendidos') || salesText.includes('full');
+                const isFull = salesText.includes('full') || $(element).find('.ui-search-item__shipping--full').length > 0;
 
+                // 🛑 FILTRO DE QUALIDADE RIGOROSO
                 if (rating && rating < 4.5) {
                     logger.debug(`⏩ Ignorando "${title}" por baixa avaliação: ${rating}`);
                     return;
                 }
                 
-                // 💰 CAPTURA DE PREÇO - CORRIGIDA
-                // IMPORTANTE: .poly-price__current é um CONTAINER que tem AMBOS os preços (antigo e atual).
-                // Precisamos ir direto no span .andes-money-amount--current para o preço REAL.
-                
-                // 1) Preço ATUAL (o que o cliente paga)
+                // 💰 CAPTURA DE PREÇO
                 const currentMoneyEl = $(element).find('.andes-money-amount--current').filter(function() {
-                    // Ignora se estiver dentro de parcelas
                     return $(this).closest('.poly-price__installments, .ui-search-item__group__element--installments').length === 0;
                 }).first();
                 
                 let priceFrac = currentMoneyEl.find('.andes-money-amount__fraction').text().replace(/\D/g, '');
                 let priceCents = currentMoneyEl.find('.andes-money-amount__cents').text().replace(/\D/g, '') || '00';
                 
-                // Fallback: se --current não existir, pega o primeiro que NÃO seja --previous e NÃO seja parcela
                 if (!priceFrac) {
                     const fallbackEl = $(element).find('.andes-money-amount').filter(function() {
                         return !$(this).hasClass('andes-money-amount--previous') &&
@@ -149,23 +144,24 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                     priceCents = fallbackEl.find('.andes-money-amount__cents').text().replace(/\D/g, '') || '00';
                 }
 
-                // 2) Preço ANTIGO (riscado)
                 const previousMoneyEl = $(element).find('.andes-money-amount--previous').first();
                 const oldPriceFrac = previousMoneyEl.find('.andes-money-amount__fraction').text().replace(/\D/g, '');
                 const oldPrice = oldPriceFrac ? parseFloat(oldPriceFrac) : null;
 
                 if (!priceFrac) return;
-
                 const price = parseFloat(`${priceFrac}.${priceCents}`);
                 
-                // Proteção: se o preço atual for MAIOR que o antigo, algo saiu errado
-                if (oldPrice && price > oldPrice) {
-                     logger.debug(`⚠️ Preço atual (R$ ${price}) > antigo (R$ ${oldPrice}). Invertido. Corrigindo...`);
-                     // Inverte: o menor é o atual, o maior é o antigo
-                     const realPrice = oldPrice;
-                     const realOldPrice = price;
-                     // Não vamos usar as variáveis invertidas diretamente, vamos pular este produto
-                     return;
+                // 🏷️ CÁLCULO DE DESCONTO REAL
+                let discountPercent = 0;
+                if (oldPrice && price < oldPrice) {
+                    discountPercent = Math.round(((oldPrice - price) / oldPrice) * 100);
+                }
+
+                // 🛑 FILTRO DE "OFERTA DE VERDADE"
+                // Só aceita se tiver pelo menos 15% de desconto OU for Loja Oficial + Full
+                if (discountPercent < 15 && !isOfficialStore) {
+                    logger.debug(`⏩ Ignorando "${title}" por desconto baixo (${discountPercent}%) e não ser Loja Oficial.`);
+                    return;
                 }
                 
                 // Tentar várias formas de pegar a imagem
@@ -178,7 +174,6 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                     image = $(element).find('img').attr('data-src') || $(element).find('img').attr('data-srcset')?.split(' ')[0];
                 }
 
-                // Upgrade para alta resolução
                 if (image && image.includes('-I.jpg')) {
                     image = image.replace('-I.jpg', '-W.jpg');
                 }
@@ -186,12 +181,18 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 if (title && price && link) {
                     const id = getStableId(link, title);
                     if (!products.find(p => p.id === id)) {
+                        // Atribuindo um Score de Qualidade para ordenação posterior
+                        const qualityScore = (isOfficialStore ? 50 : 0) + (isFull ? 30 : 0) + (discountPercent);
+                        
                         products.push({ 
                             id, 
                             title, 
                             price, 
                             oldPrice,
-                            hasDiscount,
+                            discountPercent,
+                            isOfficialStore,
+                            isFull,
+                            qualityScore,
                             link, 
                             imageUrl: image, 
                             description: `Oferta: ${searchTerm}` 
@@ -218,9 +219,13 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
         try { global.gc(); } catch (e) {}
     }
 
-    // ⭐ EMBARALHAMENTO PARA MAIS VARIEDADE
-    // Se encontrarmos muitos, pegamos 10 aleatórios dos primeiros 30 para não ser sempre igual
-    return products.sort(() => Math.random() - 0.5).slice(0, 10);
+    // ⭐ ORDENAÇÃO POR QUALIDADE (SOFISTICAÇÃO)
+    // Ordenamos pelo qualityScore (Loja Oficial, Full, Desconto) mas mantemos um pouco de aleatoriedade
+    return products
+        .sort((a, b) => b.qualityScore - a.qualityScore)
+        .slice(0, 12) // Pega os 12 melhores
+        .sort(() => Math.random() - 0.5) // Embaralha levemente esses 12
+        .slice(0, 10); // Retorna os 10 finais
 };
 
 const getRandomBrIP = () => {

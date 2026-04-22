@@ -40,6 +40,18 @@ const captureTask = async () => {
     
     const allProductsInCycle = [];
     
+    // 🔥 SOFISTICAÇÃO: Sempre tenta buscar "Ofertas do Dia" no início do ciclo
+    try {
+        logger.info('🔥 Buscando Ofertas do Dia (Produtos Premium)...');
+        const dailyDeals = await mlService.searchDailyDeals();
+        if (dailyDeals.length > 0) {
+            allProductsInCycle.push(...dailyDeals);
+            logger.info(`✅ ${dailyDeals.length} Ofertas do Dia adicionadas ao ciclo.`);
+        }
+    } catch (dealsErr) {
+        logger.warn('⚠️ Erro ao buscar ofertas do dia:', dealsErr.message);
+    }
+    
     for (const keyword of selectedKeywords) {
         try {
             logger.info(`🔎 Buscando por: ${keyword}`);
