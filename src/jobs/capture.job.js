@@ -22,9 +22,9 @@ const captureTask = async () => {
     // ⭐ EMBARALHAMENTO DE KEYWORDS: Garante que cada ciclo de captura seja imprevisível
     allKeywords.sort(() => Math.random() - 0.5);
 
-    // 🔄 ROTAÇÃO: Processa poucas keywords por ciclo para evitar OOM (Out of Memory) no Render
-    // A cada execução, pega as próximas 6 da lista (rotação circular)
-    const maxPerCycle = 6;
+    // 🔄 ROTAÇÃO: Processa pouquíssimas keywords por ciclo para evitar OOM no Render
+    // A cada execução, pega apenas 3 da lista para manter o heap baixo
+    const maxPerCycle = 3;
     const startIndex = keywordRotationIndex % allKeywords.length;
     let selectedKeywords = [];
     

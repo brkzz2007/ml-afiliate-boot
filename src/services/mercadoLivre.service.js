@@ -8,9 +8,9 @@ const logger = require('../config/logger');
 const parseProducts = (html, searchTerm, isProxy = false) => {
     if (!html || typeof html !== 'string') return [];
     
-    // 🛡️ PROTEÇÃO DE MEMÓRIA: Ignora HTMLs gigantes (> 14MB) que podem causar OOM no Render
-    if (html.length > 14 * 1024 * 1024) {
-        logger.warn(`⚠️ HTML muito grande capturado (${(html.length / 1024 / 1024).toFixed(2)}MB). Ignorando para evitar Crash.`);
+    // 🛡️ PROTEÇÃO DE MEMÓRIA CRÍTICA: Ignora HTMLs > 8MB (Render free tier limit)
+    if (html.length > 8 * 1024 * 1024) {
+        logger.warn(`⚠️ HTML muito grande para a RAM disponível (${(html.length / 1024 / 1024).toFixed(2)}MB). Ignorando.`);
         return [];
     }
 
@@ -279,7 +279,7 @@ const fetchFromBackupAPI = async (searchTerm) => {
 const fetchViaProxy = async (proxyName, proxyUrl, searchTerm, category, nextProxyFn, options = {}) => {
     try {
         logger.info(`🕵️ Ativando ${proxyName} para: ${searchTerm}...`);
-        const { data: html } = await axios.get(proxyUrl, {
+        const response = await axios.get(proxyUrl, {
             headers: options.headers || {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
                 'Accept-Language': 'pt-BR,pt;q=0.9',
@@ -287,7 +287,11 @@ const fetchViaProxy = async (proxyName, proxyUrl, searchTerm, category, nextProx
             timeout: 15000
         });
 
-        const products = parseProducts(html, searchTerm, true);
+        const products = parseProducts(response.data, searchTerm, true);
+        
+        // ⭐ LIBERAÇÃO IMEDIATA DE MEMÓRIA
+        response.data = null; 
+
         if (products.length > 0) {
             logger.info(`🚀 ${proxyName} funcionou! (${products.length} itens)`);
             return products;
