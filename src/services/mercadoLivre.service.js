@@ -71,6 +71,13 @@ const parseProducts = (html, searchTerm, isProxy = false) => {
                 const title = titleElement.text().trim();
                 if (!title) return;
 
+                // 🛑 FILTRO DE NICHO (CASA): Ignora ferramentas pesadas e itens nada a ver
+                const blacklist = ['martelete', 'parafusadeira', 'furadeira', 'ferramenta', 'pneu', 'pc gamer', 'oficina', 'mecanico', 'gamer'];
+                if (blacklist.some(word => title.toLowerCase().includes(word))) {
+                    logger.debug(`⏩ Ignorando "${title}" por não ser do nicho Casa.`);
+                    return;
+                }
+
                 // 🔗 CAPTURA DE LINK
                 const linkElement = $(element).find('a.poly-component__title, a.ui-search-link, a.poly-card__title').first();
                 let link = linkElement.attr('href') || $(element).find('a').attr('href') || titleElement.closest('a').attr('href');
