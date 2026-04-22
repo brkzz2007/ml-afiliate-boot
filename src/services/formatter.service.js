@@ -6,27 +6,21 @@ class FormatterService {
   async formatLink(link) {
     if (!link) return '';
 
-    // 1. Tenta encurtador is.gd
-    try {
-      const res = await axios.get(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(link)}`, { timeout: 3000 });
-      if (res.data && res.data.includes('http')) return res.data;
-    } catch (e) { }
-
-    // 2. Tenta encurtador TinyURL
-    try {
-      const res = await axios.get(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(link)}`, { timeout: 3000 });
-      if (res.data && res.data.includes('http')) return res.data;
-    } catch (e) { }
-
-    // 3. Fallback: Limpeza Manual Agressiva (Remove TUDO exceto o id e o matt_tool)
+    const tag = env.mlAffiliateTag || 'bv20260330080614';
+    
+    // 🛍️ CONSTRUÇÃO DE LINK OFICIAL (Formato Profissional)
+    // Extrai o código MLB (ex: MLB12345678)
     const mlbMatch = link.match(/(MLB[U]?\d+)/i);
+    
     if (mlbMatch) {
       const id = mlbMatch[1];
-      const tag = env.mlAffiliateTag || '';
-      return `https://mercadolivre.com.br/p/${id}?matt_tool=${tag}`;
+      // Retorna o link oficial "limpo" do ML que já ativa o seu afiliado
+      return `https://www.mercadolivre.com.br/p/${id}?matt_tool=${tag}`;
     }
 
-    return link.split('?')[0]; // Remove query strings lixo
+    // Caso não seja um link de produto direto, apenas anexa a tag de forma limpa
+    const baseLink = link.split('?')[0];
+    return `${baseLink}?matt_tool=${tag}`;
   }
 
   async generateRawMessage(product) {
