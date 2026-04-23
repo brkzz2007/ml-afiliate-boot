@@ -13,7 +13,8 @@ const PRODUCT_BLACKLIST = [
     'tapete de carro', 'capa de banco', 'suporte celular carro', 'transmissor fm',
     'carregador veicular', 'p/ carro', 'para carro',
     'creatina', 'whey', 'suplemento', 'proteína', 'bcaa', 'termogênico', 'emagrecer', 
-    'vitamina', 'ômega 3', 'colágeno', 'pré-treino', 'albumina', 'glutamina'
+    'vitamina', 'ômega 3', 'colágeno', 'pré-treino', 'albumina', 'glutamina',
+    'tênis', 'tenis', 'sapato', 'calçado', 'roupa', 'camisa', 'camiseta', 'calça', 'bermuda', 'jaqueta', 'casaco'
 ];
 
 /**
