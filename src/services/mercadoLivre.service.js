@@ -11,7 +11,9 @@ const PRODUCT_BLACKLIST = [
     'farol', 'calota', 'volante', 'protetor solar para carro', 'limpador de parabrisa',
     'óleo de motor', 'bateria de carro', 'som automotivo', 'central multimídia',
     'tapete de carro', 'capa de banco', 'suporte celular carro', 'transmissor fm',
-    'carregador veicular', 'p/ carro', 'para carro'
+    'carregador veicular', 'p/ carro', 'para carro',
+    'creatina', 'whey', 'suplemento', 'proteína', 'bcaa', 'termogênico', 'emagrecer', 
+    'vitamina', 'ômega 3', 'colágeno', 'pré-treino', 'albumina', 'glutamina'
 ];
 
 /**
