@@ -8,17 +8,10 @@ class FormatterService {
 
     const tag = env.mlAffiliateTag || 'bv20260330080614';
     
-    // Se o link contiver um ID MLB, usamos o formato oficial de produto
-    const mlbMatch = link.match(/(MLB[U]?\d+)/i);
-    let finalLink;
-    if (mlbMatch) {
-      const id = mlbMatch[1];
-      finalLink = `https://www.mercadolivre.com.br/p/${id}?matt_tool=${tag}`;
-    } else {
-      // Caso contrário, limpamos parâmetros e anexamos a tag de afiliado
-      const baseLink = link.split('?')[0].split('#')[0];
-      finalLink = `${baseLink}?matt_tool=${tag}`;
-    }
+    // Limpa o link de parâmetros originais e anexa a tag de afiliado
+    // O link original capturado pelo scraper já possui a estrutura correta (/p/ ou produto.mercadolivre)
+    const baseLink = link.split('?')[0].split('#')[0];
+    const finalLink = `${baseLink}?matt_tool=${tag}`;
 
     // 🔗 Tenta encurtar para deixar o link pequeno
     try {
