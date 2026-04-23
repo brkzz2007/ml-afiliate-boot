@@ -8,16 +8,10 @@ class FormatterService {
 
     const tag = env.mlAffiliateTag || 'bv20260330080614';
     
-    let finalLink = '';
-    const mlbMatch = link.match(/(MLB[U]?\d+)/i);
-    
-    if (mlbMatch) {
-      const id = mlbMatch[1];
-      finalLink = `https://www.mercadolivre.com.br/p/${id}?matt_tool=${tag}`;
-    } else {
-      const baseLink = link.split('?')[0];
-      finalLink = `${baseLink}?matt_tool=${tag}`;
-    }
+    // Limpa o link de parâmetros originais e anexa a tag de afiliado
+    // Isso evita o erro 404 ao tentar forçar o prefixo /p/ em produtos que não são de catálogo
+    const baseLink = link.split('?')[0].split('#')[0];
+    const finalLink = `${baseLink}?matt_tool=${tag}`;
 
     // 🔗 Tenta encurtar para deixar o link pequeno
     try {
