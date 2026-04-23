@@ -56,34 +56,31 @@ const updateQueueStatus = async (id, status) => {
 
 const getNextApprovedItem = async () => {
     try {
-        // 1. Pega os IDs dos últimos 10 produtos publicados para evitar repetição recente
-        const recentPublishedQuery = `
-            SELECT q.product_id FROM queue q
-            WHERE q.status = 'published'
-            ORDER BY q.updated_at DESC LIMIT 10
+        // 1. Descobrir qual o nicho do último item postado (para evitar repetição de nicho)
+        const lastSentQuery = `
+            SELECT p.description FROM queue q 
+            JOIN products p ON q.product_id = p.id 
+            WHERE q.status = 'published' 
+            ORDER BY q.updated_at DESC LIMIT 1
         `;
-        const recentItems = await db.all(recentPublishedQuery, []);
-        const recentIds = recentItems.map(r => r.product_id);
+        const lastSent = await db.get(lastSentQuery, []);
+        const lastNiche = lastSent ? lastSent.description : '';
 
-        // 2. Tenta pegar um aprovado que NÃO esteja nos recentes — de forma ALEATÓRIA
-        let item = null;
-        if (recentIds.length > 0) {
-            const placeholders = recentIds.map(() => '?').join(',');
-            const query = `
-                SELECT q.*, p.title, p.image_url, p.description 
-                FROM queue q 
-                JOIN products p ON q.product_id = p.id 
-                WHERE q.status = 'approved' 
-                AND q.product_id NOT IN (${placeholders})
-                ORDER BY RANDOM()
-                LIMIT 1
-            `;
-            item = await db.get(query, recentIds);
-        }
+        // 2. Tentar pegar um produto APROVADO que seja de um nicho DIFERENTE do último enviado
+        let query = `
+            SELECT q.*, p.title, p.image_url, p.description 
+            FROM queue q 
+            JOIN products p ON q.product_id = p.id 
+            WHERE q.status = 'approved' 
+            AND p.description != ?
+            ORDER BY RANDOM()
+            LIMIT 1
+        `;
+        let item = await db.get(query, [lastNiche]);
 
-        // 3. Fallback: se todos os aprovados já foram publicados recentemente, pega QUALQUER um aleatoriamente
+        // 3. Fallback: Se não achar de nicho diferente, pega qualquer aprovado
         if (!item) {
-            const fallbackQuery = `
+            query = `
                 SELECT q.*, p.title, p.image_url, p.description 
                 FROM queue q 
                 JOIN products p ON q.product_id = p.id 
@@ -91,7 +88,7 @@ const getNextApprovedItem = async () => {
                 ORDER BY RANDOM()
                 LIMIT 1
             `;
-            item = await db.get(fallbackQuery, []);
+            item = await db.get(query, []);
         }
 
         return item;
