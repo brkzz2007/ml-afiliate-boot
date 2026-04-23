@@ -42,9 +42,7 @@ class FormatterService {
     const currentPrice = product.price;
     const oldPrice = product.oldPrice || (currentPrice * 1.15);
     
-    // Extrai o ID MLB para o "Busca Rápida"
-    const mlbMatch = product.link.match(/(MLB[U]?\d+)/i);
-    const mlbId = mlbMatch ? mlbMatch[1] : '';
+
 
     const alerts = [
       'Item útil e barato pra casa 👇🔥',
@@ -68,9 +66,7 @@ class FormatterService {
       `❌ De: ~R$ ${oldPrice.toFixed(2).replace('.', ',')}~`,
       `✅ *POR: R$ ${currentPrice.toFixed(2).replace('.', ',')}*`,
       ``,
-      `🔍 *Cole este texto no buscador do Mercado Livre:*`,
-      `${mlbId}`,
-      ``,
+
       `🔗 *Ou acesse o link:*`,
       `${finalLink}`
     ].join('\n');
