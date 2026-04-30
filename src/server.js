@@ -7,13 +7,36 @@ const { startPublishJob } = require('./jobs/publisher.job');
 const { startCleanupJob } = require('./jobs/cleanup.job');
 const whatsappPublisher = require('./publishers/whatsapp.publisher');
 
-// Proteção contra erros fatais não tratados
-process.on('unhandledRejection', (reason) => {
+// Proteção contra erros fatais não tratados e sessões corrompidas
+const handleFatalError = async (errorMsg) => {
+    if (errorMsg && (errorMsg.includes('Bad MAC') || errorMsg.includes('bad mac') || errorMsg.includes('Session error'))) {
+        logger.error('⚠️ Erro crítico de sessão detectado (Bad MAC). Limpando sessão do banco e do disco...');
+        try {
+            const { db } = require('./database/init');
+            await db.run('DELETE FROM sessions', []);
+            const fs = require('fs');
+            const path = require('path');
+            const authPath = path.resolve(process.cwd(), '.baileys_auth');
+            if (fs.existsSync(authPath)) {
+                fs.rmSync(authPath, { recursive: true, force: true });
+            }
+            logger.info('✅ Sessão apagada com sucesso. Reiniciando o processo...');
+        } catch (e) {
+            logger.error('❌ Erro ao tentar limpar a sessão:', e.message);
+        }
+        process.exit(1);
+    }
+};
+
+process.on('unhandledRejection', async (reason) => {
     const errorMsg = reason instanceof Error ? reason.stack : String(reason);
     logger.error(`Unhandled Rejection: ${errorMsg}`);
+    await handleFatalError(errorMsg);
 });
-process.on('uncaughtException', (err) => {
-    logger.error(`Uncaught Exception: ${err.stack || err.message}`);
+process.on('uncaughtException', async (err) => {
+    const errorMsg = err.stack || err.message;
+    logger.error(`Uncaught Exception: ${errorMsg}`);
+    await handleFatalError(errorMsg);
 });
 
 const startServer = async () => {

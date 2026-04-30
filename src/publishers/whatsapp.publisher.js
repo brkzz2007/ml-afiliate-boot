@@ -124,7 +124,8 @@ class WhatsappPublisher {
                 lastDisconnect.error.output?.statusCode : 0;
             
             const isLoggedOut = statusCode === DisconnectReason.loggedOut;
-            const shouldReconnect = !isLoggedOut;
+            const isBadSession = lastDisconnect.error?.message?.includes('Bad MAC') || lastDisconnect.error?.message?.includes('bad mac');
+            const shouldReconnect = !isLoggedOut && !isBadSession;
             
             this.isReady = false;
             
