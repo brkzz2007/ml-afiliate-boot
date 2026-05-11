@@ -9,9 +9,17 @@ class FormatterService {
     const tag = env.mlAffiliateTag || 'bv20260330080614';
     const affiliateId = env.mlAffiliateId || '83873997';
     
-    // Limpa o link de parâmetros originais e anexa os rastreios completos
+    // Limpa o link de parâmetros originais
     const baseLink = link.split('?')[0].split('#')[0];
-    const finalLink = `${baseLink}?matt_tool=${affiliateId}&matt_word=${tag}`;
+    
+    let finalLink;
+    if (env.awinAffiliateId) {
+      // 🚀 SOLUÇÃO AWIN: Única forma 100% autônoma e oficial de gerar link sem API!
+      finalLink = `https://www.awin1.com/cread.php?awinmid=${env.awinMerchantId}&awinaffid=${env.awinAffiliateId}&ued=${encodeURIComponent(baseLink)}`;
+    } else {
+      // Fallback para rastreio nativo imperfeito
+      finalLink = `${baseLink}?matt_tool=${affiliateId}&matt_word=${tag}`;
+    }
 
     // 🔗 Tenta encurtar para deixar o link pequeno e bonito
     try {

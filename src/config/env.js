@@ -14,6 +14,8 @@ module.exports = {
   whatsappTargetGroup: process.env.WHATSAPP_TARGET_GROUP || 'OfertaLar #17',
   mlAffiliateTag: process.env.ML_AFFILIATE_TAG || 'bv20260330080614',
   mlAffiliateId: process.env.ML_AFFILIATE_ID || '83873997',
+  awinAffiliateId: process.env.AWIN_AFFILIATE_ID || '', // Ex: '123456'
+  awinMerchantId: process.env.AWIN_MERCHANT_ID || '22216', // ID do Mercado Livre na Awin
   initialCaptureDelay: 60000,
   publishStartTime: process.env.PUBLISH_START_TIME || '08:00',
   publishEndTime: process.env.PUBLISH_END_TIME || '22:00',
